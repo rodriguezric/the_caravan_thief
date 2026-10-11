@@ -82,6 +82,12 @@ func _ready() -> void:
 			at.name = "Autotest"
 			get_tree().root.add_child.call_deferred(at)
 		return
+	if "--faces" in OS.get_cmdline_user_args():
+		# ./faces: the character / expression viewer (tools/face_viewer.gd)
+		Game.testing = true
+		cine_layer.add_child(load("res://tools/face_viewer.gd").new())
+		fade_in(0.2)
+		return
 	var sc := _arg("--scene=")
 	if sc != "":
 		# ./run_scene S6: jump straight into a scene (nothing saved)

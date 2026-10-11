@@ -1,0 +1,12 @@
+#!/bin/bash
+# Character / expression viewer: ./faces [who] [mood] ["a line to say"]
+#   Up/Down character, Left/Right mood, Z say the line, N next line, T type a line,
+#   P pose (Shift+P back), F turn, C copy "who / mood / pose / facing", X quit.
+# Moods: neutral smile smirk grin laugh sly sad cry worried shock scared angry
+#        determined hurt closed sleep omen hollow
+cd "$(dirname "$0")"
+args=(--faces)
+[ -n "$1" ] && args+=("--who=$1")
+[ -n "$2" ] && args+=("--mood=$2")
+[ -n "$3" ] && args+=("--text=$3")
+exec godot --path . -- "${args[@]}"

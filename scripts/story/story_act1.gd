@@ -51,7 +51,8 @@ func waystation_map() -> Dictionary:
 		],
 		"npcs": [
 			{"who": "fen", "tile": Vector2i(8, 5), "dir": 2, "pose": "sit"},
-			{"who": "wick", "tile": Vector2i(11, 6), "dir": 3, "wander": true, "range": 2.0},
+			# already at Rook's feet: the audience of one for the opening rehearsal (wanders after)
+			{"who": "wick", "tile": Vector2i(7, 6), "dir": 1, "range": 2.0},
 			{"who": "bracken", "tile": Vector2i(15, 5), "dir": 3, "pose": "cross"},
 		],
 		"events": [
@@ -76,11 +77,7 @@ func scene_p1() -> Variant:
 	await c.close(0.6)
 	await s.explore(waystation_map(), Vector2i(6, 4), 0)
 	s.lock(true)
-	var w := s.w
 	var wick := s.a("wick")
-	wick.info["wander"] = false
-	wick.position = w.tile_center(Vector2i(6, 6))
-	wick.face(1)
 	s.face("player", 0)
 	await s.wait(0.5)
 	# Rook rehearses his legend for an audience of one

@@ -570,11 +570,7 @@ static func _draw(b: PixBuf, s: Dictionary, dir: int, frame: int, mood: String, 
 			if s.get("brass_tooth", false):
 				b.pset(int(bx), int(hy + 6.4), Pal.BRASS)
 	if s.get("mask", false) and not back:
-		# a cloth mask over nose and mouth
-		var mx := hx + (1.2 if side else 0.0)
-		var mc: Color = s.get("maskc", Pal.CREAM)
-		b.rect(mx - (4.0 if side else 5.0), hy + 3.4, 8.0 if side else 10.0, 3.2, mc)
-		b.rect(mx - (4.0 if side else 5.0), hy + 6.0, 8.0 if side else 10.0, 0.8, Pal.shade(mc))
+		_mask(b, s, skin, hx, hy)
 
 	if side and pose != "lie_src":
 		# near arm, in front of the body
@@ -878,6 +874,34 @@ static func _soften_hair(b: PixBuf, hair: Color) -> void:
 				if same.call(c, sw[0]):
 					b.pset(x, y, sw[1])
 					break
+
+
+static func _mask(b: PixBuf, s: Dictionary, skin: Color, hx: float, hy: float) -> void:
+	## A cloth mask over nose and mouth: every face pixel from just under the
+	## eyes down to the chin, so it follows the face's own outline all the way
+	## round. Its sides and bottom get a darker edge to part it from a hood.
+	var mc: Color = s.get("maskc", Pal.CREAM)
+	var tones := [skin, Pal.shade(skin), Pal.deep(skin), Pal.hi(skin), Pal.shade(skin).lerp(Pal.INK2, 0.4)]
+	var is_skin := func(c: Color) -> bool:
+		if c.a < 0.5:
+			return false
+		for tc: Color in tones:
+			if absf(c.r - tc.r) < 0.01 and absf(c.g - tc.g) < 0.01 and absf(c.b - tc.b) < 0.01:
+				return true
+		return false
+	var top := int(hy) + 4  # the row under the eyes (_face draws them on rows ey..ey + 2, ey = hy + 1)
+	var cells := {}
+	for y in range(top, mini(b.h, top + 9)):
+		for x in range(maxi(0, int(hx) - 9), mini(b.w, int(hx) + 10)):
+			if is_skin.call(b.pget(x, y)):
+				cells[Vector2i(x, y)] = true
+	for c: Vector2i in cells:
+		var edge := not (cells.has(c + Vector2i.LEFT) and cells.has(c + Vector2i.RIGHT) and cells.has(c + Vector2i.DOWN))
+		b.pset(c.x, c.y, Pal.shade(mc) if edge else mc)
+	# a fold across the cloth, a little below the nose
+	for c: Vector2i in cells:
+		if c.y == top + 2 and cells.has(c + Vector2i.LEFT) and cells.has(c + Vector2i.RIGHT) and (c.x + c.y) % 2 == 0:
+			b.pset(c.x, c.y, mc.lerp(Pal.shade(mc), 0.5))
 
 
 static func _flatten_face(b: PixBuf, skin: Color, ey: int) -> void:

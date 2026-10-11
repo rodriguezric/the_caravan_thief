@@ -491,7 +491,7 @@ func text_cps() -> float:
 
 func battle_speed() -> float:
 	if autoplay():
-		return 3.0
+		return float(OS.get_environment("CT_SPEED")) if OS.get_environment("CT_SPEED") != "" else 3.0
 	return [1.0, 1.6][int(settings.get("battle_speed", 0))]
 
 

@@ -217,6 +217,37 @@ func _run(scenario: String) -> void:
 			await wait(0.3)
 			await shot("pause_log")
 			get_tree().quit()
+		"balance":
+			# each key fight several times with a sensible autopilot
+			var cases := [
+				["S1", "", "act1", "_jackal_battle", []],
+				["S1", "", "act1", "_ridge_battle", []],
+				["S1", "", "act1", "_rob_battle", []],
+				["S3", "has_sword", "act1", "_hunter_battle", [["rook"]]],
+				["S4", "has_sword,fen_fights", "act2", "_gate_battle", []],
+				["S11", "has_sword,mara_joined,fen_fights", "act3", "_factor_battle", []],
+			]
+			var only := OS.get_environment("CT_ONLY")
+			for c in cases:
+				if only != "" and not str(c[3]).contains(only):
+					continue
+				var wins := 0
+				var notes := []
+				for k in int(OS.get_environment("CT_N")) if OS.get_environment("CT_N") != "" else 3:
+					Game.new_run()
+					Game.run.scene = c[0]
+					for f in str(c[1]).split(",", false):
+						Game.set_flag(f)
+					_preset()
+					var act: Node = main.story.acts[c[2]]
+					main.story.part = act
+					var def: Dictionary = act.callv(c[3], c[4])
+					var r: Dictionary = await main.battle(def)
+					if r.outcome != "defeat":
+						wins += 1
+					notes.append("%s/%dt/-%d" % [r.outcome, r.turns, r.taken])
+				print("[balance] %s %s: %d wins  %s" % [c[0], c[3], wins, ", ".join(notes)])
+			get_tree().quit()
 		"icon":
 			var img: Image = ArtUI.app_icon().img
 			img.resize(256, 256, Image.INTERPOLATE_NEAREST)

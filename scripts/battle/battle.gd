@@ -564,7 +564,25 @@ func _auto_turn(u: BattleUnit) -> Dictionary:
 			return await _execute(u, {"cmd": "skill", "skill": sk, "target": tgt})
 	if living(enemies).is_empty():
 		return {}
-	return await _execute(u, {"cmd": "attack", "target": living(enemies)[0]})
+	# a sensible player: patch up whoever's hurting, then spend TP, then hit
+	var hurt := living(party).filter(func(p: BattleUnit) -> bool: return p.hp < p.max_hp * 0.4 and not p.ai)
+	if not hurt.is_empty():
+		for id in ["salve", "bread"]:
+			if Game.supply(id) > 0:
+				var it: Dictionary = Data.SUPPLIES[id].duplicate()
+				it.id = id
+				return await _execute(u, {"cmd": "item", "item": it, "target": hurt[0]})
+		if u.data.get("skills", []).has("dressing") and u.tp >= 4:
+			var sk: Dictionary = BattleDefs.SKILLS.dressing.duplicate()
+			sk.id = "dressing"
+			return await _execute(u, {"cmd": "skill", "skill": sk, "target": hurt[0]})
+	var foe := _first(enemies)
+	for sid in u.data.get("skills", []):
+		var sk: Dictionary = BattleDefs.SKILLS[sid].duplicate()
+		sk.id = sid
+		if sk.kind == "dmg" and u.tp >= int(sk.cost) and randf() < 0.5:
+			return await _execute(u, {"cmd": "skill", "skill": sk, "target": foe})
+	return await _execute(u, {"cmd": "attack", "target": foe})
 
 
 func _highlight(u: BattleUnit, on: bool) -> void:
@@ -1976,7 +1994,7 @@ func say(who: String, text, mood: String = "", extra: Dictionary = {}) -> void:
 
 
 func ask(question: String, options: Array, who: String = "") -> int:
-	return await Game.main.story.ask(question, options, who)
+	return await Game.main.story.choose(question, options, who)
 
 
 func move(id: String, to: Vector2, t_: float = 0.4) -> void:

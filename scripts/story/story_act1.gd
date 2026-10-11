@@ -78,7 +78,7 @@ func scene_p1() -> Variant:
 	s.lock(true)
 	var w := s.w
 	var wick := s.a("wick")
-	wick.info.wander = false
+	wick.info["wander"] = false
 	wick.position = w.tile_center(Vector2i(6, 6))
 	wick.face(1)
 	s.face("player", 0)
@@ -142,7 +142,7 @@ func scene_p1() -> Variant:
 	fen.gesture("point", 1.0)
 	await s.say("fen", "Look, Rook. Just look. Come back and tell me what you saw.", "")
 	await s.say("", "Arrows or WASD to move, Z to talk and look at things, Shift to run, X for the menu. The road is to the east.", "", {"color": Pal.CANDLE.lerp(Pal.WHITE, 0.4)})
-	wick.info.wander = true
+	wick.info["wander"] = true
 	s.walk("fen", [Vector2i(8, 5)], 26.0)
 	fen.set_pose("walk")
 	s.lock(false)
@@ -431,13 +431,13 @@ func _s1_observe() -> void:
 	var r := s.a("player")
 	await s.think("Watch. Just look, like Fen said. Get close enough to hear without being close enough to be seen.")
 	await s.say("", "Sneak to the three places marked. Stay out of the guards' sight.", "", {"color": Pal.CANDLE.lerp(Pal.WHITE, 0.4)})
-	s.w.def.sneak = true
+	s.w.def["sneak"] = true
 	r.set_pose("sneak")
 	s.lock(false)
 	Game.set_flag("listen_n", 0)
 	_place_listen()
 	await s.until(func() -> bool: return int(Game.fval("listen_n", 0)) >= 3)
-	s.w.def.sneak = false
+	s.w.def["sneak"] = false
 	s.lock(true)
 	Game.set_flag("observed_rotation")
 	Game.add("finesse", 1)
@@ -465,9 +465,6 @@ func _place_listen() -> void:
 	s.w.events[Vector2i(18, 5)] = {"id": "listen_ollo"}
 	s.w.events[Vector2i(26, 5)] = {"id": "listen_factor"}
 	s.marker(Vector2i(10, 6))
-	for gid in ["g1", "g2"]:
-		var g := s.a(gid)
-		g.info.patrol = [g.home_tile, g.home_tile + Vector2i(0, -2)]
 	s.w.guards.clear()
 	s.w._make_guard(s.a("g1"), {"vision": 52})
 	s.w.guards[0].pts = [s.w.tile_center(Vector2i(16, 9)), s.w.tile_center(Vector2i(16, 7)), s.w.tile_center(Vector2i(19, 7))]

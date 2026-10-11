@@ -174,6 +174,9 @@ CT_TEST=story CT_AUTOPLAY=win CT_DIR=/tmp/ct CT_OUT=/tmp/ct CT_SHOT_EVERY=2 CT_E
 # CT_STATE="loyalty=7,confessed" (preset variables/flags), CT_SWORD=1 (use the blade's arts)
 CT_TEST=battle:hunters CT_AUTOPLAY=win CT_SWORD=1 CT_OUT=/tmp/ct CT_SHOT_EVERY=0.25 godot --path .
 CT_TEST=minigame:lockpick CT_DIR=/tmp/ct godot --path .
+# balance: each key story fight N times with a sensible autopilot (heals, uses techniques)
+CT_TEST=balance CT_AUTOPLAY=win CT_SPEED=6 CT_N=3 CT_DIR=/tmp/ct godot --headless --path .
+# CT_ACT=talk makes the autopilot use ACT > Talk (persuasion routes); CT_SPEED sets autopilot battle speed
 CT_TEST=shell CT_DIR=/tmp/ct CT_OUT=/tmp/ct godot --path .
 CT_TEST=check godot --headless --path .          # parse-check every script
 CT_TEST=icon godot --headless --path .           # regenerate icon.png

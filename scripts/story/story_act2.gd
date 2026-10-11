@@ -138,7 +138,7 @@ func _s4_wick() -> void:
 	s.omen_pulse()
 	await s.say("blade", "There you are.")
 	wick.set_pose("walk")
-	wick.info.wander = true
+	wick.info["wander"] = true
 
 
 func _s4_haul() -> void:
@@ -287,7 +287,7 @@ func _gate_battle() -> Dictionary:
 	return {
 		"id": "s4_gate", "title": "Mara at the gate!", "bg": "rookery", "music": "tension",
 		"party": ["rook", "fen"],
-		"enemies": [BattleDefs.enemy("mara", {"pos": Vector2(80, 126)})],
+		"enemies": [BattleDefs.enemy("mara", {"pos": Vector2(80, 126), "hp": 96, "def": 4})],
 		"objective": {"kind": "persuade", "need": 3, "who": "mara", "text": "TALK HER DOWN", "win_title": "SHE LOWERS THE BOW",
 			"note": "Nobody had to bleed for it.", "talk_desc": "Words, instead of knives."},
 		"no_hostile": true, "no_steal": false,
@@ -648,7 +648,7 @@ func _s5_ysa() -> void:
 			s.a("player").set_pose("kneel")
 			await s.say("rook", "Found it on the road. Looks like it was trying to find you.", "smile")
 			var tam := s.a("tam")
-			tam.info.wander = false
+			tam.info["wander"] = false
 			await s.walk("tam", [s.w.tile_of(s.a("player").position) + Vector2i(1, 0)], 70.0)
 			tam.hop(7.0)
 			tam.emote("heart")
@@ -1259,7 +1259,7 @@ func _s8_night() -> void:
 		return
 	var w := s.a("wick")
 	if w:
-		w.info.wander = false
+		w.info["wander"] = false
 		await s.walk("player", [Vector2i(17, 4)], 50.0)
 		w.position = s.w.tile_center(Vector2i(16, 4))
 		w.face(2)

@@ -49,7 +49,8 @@ var spotted_once := false
 
 
 func setup(map_def: Dictionary, tile: Vector2i, facing: int, p_handler: Object) -> void:
-	def = map_def
+	# own copies: literal map definitions can be read-only, and scenes edit them
+	def = map_def.duplicate(true)
 	handler = p_handler
 	rows = def.rows
 	tw = (rows[0] as String).length()
@@ -104,7 +105,7 @@ func _clamp_cam(p: Vector2) -> Vector2:
 	var mw := tw * TILE
 	var mh := th * TILE
 	var x := mw / 2.0 if mw <= 320 else clampf(p.x, 160.0, mw - 160.0)
-	var y := mh / 2.0 + cam_bias * 0.5 if mh <= 180 else clampf(p.y, 90.0, mh - 90.0 + cam_bias)
+	var y := mh / 2.0 + minf(cam_bias * 0.5, maxf(0.0, (180.0 - mh) / 2.0)) if mh <= 180 else clampf(p.y, 90.0, mh - 90.0)
 	return Vector2(x, y)
 
 
@@ -226,7 +227,7 @@ func _build_npcs() -> void:
 func add_npc(n: Dictionary) -> Actor:
 	var spec: Dictionary = n.spec if n.has("spec") else Data.spec(n.who)
 	var a := Actor.new(spec)
-	a.info = n
+	a.info = n.duplicate(true)
 	a.home_tile = n.tile
 	a.position = tile_center(n.tile) + n.get("offset", Vector2.ZERO)
 	a.face(n.get("dir", 0))
@@ -453,7 +454,7 @@ func _make_guard(a: Actor, n: Dictionary) -> void:
 	cone.z_index = 1
 	lights.add_child(cone)
 	var pts := []
-	for t in n.patrol:
+	for t in n.get("patrol", []):
 		pts.append(tile_center(t))
 	guards.append({"actor": a, "cone": cone, "pts": pts, "i": 0, "wait": n.get("pause", 1.2), "r": float(r), "speed": n.get("speed", 26.0)})
 

@@ -16,7 +16,17 @@ Everything, art and sound included, is generated in code.
 ```bash
 godot --path .                  # the game: company card -> opening -> title
 ./run_scene S6                  # jump straight into a scene (nothing is saved)
+./faces                         # character / expression viewer
+./faces mara worried "A line."  # start on a character and mood, with your own line
 ```
+
+**Face viewer** (`tools/face_viewer.gd`): every character, every mood, at the sizes
+the game uses (dialog portrait, a 3x close-up, 1x field sprites), talking in the
+real dialog box. The lines are the ones that character actually says in that
+mood in the story. Up/Down character, Left/Right mood (works mid-line too),
+Z say the line, N next line, T type your own line, P pose (Shift+P back), F turn,
+C copy `who / mood / pose / facing` to the clipboard (also printed in the
+terminal), X quit.
 
 Scene ids: `P1 S1 S2 S3 S4 S5 S6 S7 S8 S9 S10 S11`.
 

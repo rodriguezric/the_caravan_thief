@@ -191,7 +191,7 @@ func paginate(line: String) -> Array:
 	return pages
 
 
-func say(lines: Array, speaker: String = "", opts: Dictionary = {}) -> void:
+func _prepare(speaker: String, opts: Dictionary) -> void:
 	_open_box(opts.get("box", "box"))
 	_set_portrait(opts)
 	name_box.visible = speaker != ""
@@ -203,6 +203,18 @@ func say(lines: Array, speaker: String = "", opts: Dictionary = {}) -> void:
 	else:
 		name_box.position = Vector2(10, 116)
 	text.add_theme_color_override("font_color", opts.get("color", Pal.TEXT if speaker != "" else Pal.CREAM))
+
+
+func show_line(line: String, speaker: String = "", opts: Dictionary = {}) -> void:
+	## Puts a page up at once, untyped, and leaves the box open (the face viewer).
+	_prepare(speaker, opts)
+	text.text = line
+	text.visible_characters = -1
+	arrow.visible = false
+
+
+func say(lines: Array, speaker: String = "", opts: Dictionary = {}) -> void:
+	_prepare(speaker, opts)
 	var pages := []
 	for l in lines:
 		pages.append_array(paginate(str(l)))

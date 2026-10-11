@@ -992,8 +992,9 @@ static func _face(b: PixBuf, s: Dictionary, dir: int, mood: String, hx: float, h
 			"angry", "determined":
 				b.rect(ex, ey + 1, 2, 2, Pal.INK)
 				b.pset(ex + inner, ey + 1, Pal.WHITE)
-				b.pset(ex + inner, ey - 1 if em == "angry" else ey, Pal.INK2)
-				b.pset(ex + outer, ey if em == "angry" else ey, Pal.INK2)
+				# angry brows slope down toward the nose: inner end low, outer end high
+				b.pset(ex + inner, ey, Pal.INK2)
+				b.pset(ex + outer, ey - 1 if em == "angry" else ey, Pal.INK2)
 			"hurt":
 				# squeezed shut: > <
 				if i == 0:
@@ -1059,14 +1060,11 @@ static func _face(b: PixBuf, s: Dictionary, dir: int, mood: String, hx: float, h
 			b.pset(mx + 1, my, Pal.INK2)
 			b.pset(mx + 2, my - 1, Pal.INK2)
 		"grin", "laugh":
-			b.rect(mx - 1, my, 4, 2, Pal.INK2)
-			b.rect(mx, my, 2, 1, Pal.WHITE)
-			b.pset(mx - 1, my - 1, Pal.INK2)
-			b.pset(mx + 2, my - 1, Pal.INK2)
+			# a small upside-down trapezoid in the dark outline colour, no teeth
+			b.rect(mx - 1, my, 4, 1, Pal.INK2)
+			b.rect(mx, my + 1, 2, 1, Pal.INK2)
 			if s.get("brass_tooth", false):
 				b.pset(mx + 1, my, Pal.BRASS)
-			if mood == "laugh":
-				b.pset(mx, my + 1, Pal.ROSE)
 		"sad", "cry", "worried":
 			b.pset(mx, my + 1, Pal.INK2)
 			b.pset(mx + 1, my, mouth)
@@ -1076,7 +1074,7 @@ static func _face(b: PixBuf, s: Dictionary, dir: int, mood: String, hx: float, h
 			b.rect(mx, my, 2, 1, Pal.INK2)
 		"hurt":
 			b.rect(mx - 1, my, 3, 1, Pal.INK2)
-			b.pset(mx, my, Pal.WHITE)
+			b.pset(mx, my, Pal.ROSE.lerp(Pal.INK2, 0.35))
 		_:
 			if s.get("smile", false) and mood == "":
 				b.pset(mx, my, Pal.INK2)
@@ -1087,7 +1085,10 @@ static func _face(b: PixBuf, s: Dictionary, dir: int, mood: String, hx: float, h
 		b.rect(mx, my, 2, 2, Pal.INK2)
 		b.pset(mx, my + 1, Pal.ROSE)
 	elif open and mood in ["grin", "laugh"]:
-		b.rect(mx - 1, my + 1, 4, 1, Pal.ROSE)
+		# talking: the trapezoid opens one row deeper, dark rim around the tongue
+		b.rect(mx - 1, my + 1, 4, 1, Pal.INK2)
+		b.rect(mx, my + 1, 2, 1, Pal.ROSE)
+		b.rect(mx, my + 2, 2, 1, Pal.INK2)
 
 
 # -------------------------------------------------------------------- hats --

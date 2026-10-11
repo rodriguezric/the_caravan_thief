@@ -9,7 +9,8 @@ const SCALES := {
 }
 
 const DEFS := {
-	"title": {"beats": 3, "bpm": 84, "root": 57, "scale": "harmonic", "prog": [0, 5, 3, 4, 0, 5, 1, 4], "lead": "tri", "bass": "waltz", "drums": "shaker", "density": 0.5, "arp": true, "seed": 7},
+	# the Sword Stories theme: written out by hand (see _sword_theme), not generated
+	"title": {"beats": 4, "bars": 16, "bpm": 72, "score": "sword", "seed": 7},
 	"camp": {"beats": 4, "bpm": 78, "root": 62, "scale": "dorian", "prog": [0, 3, 0, 4, 0, 3, 6, 0], "lead": "tri", "bass": "pulse", "drums": "shaker", "density": 0.45, "arp": true, "seed": 13},
 	"road": {"beats": 4, "bpm": 96, "root": 55, "scale": "mixolydian", "prog": [0, 6, 3, 0, 0, 6, 4, 0], "lead": "sq", "duty": 0.25, "bass": "walk", "drums": "swing", "density": 0.55, "seed": 23},
 	"heist": {"beats": 4, "bpm": 104, "root": 50, "scale": "minor", "prog": [0, 0, 5, 4, 0, 0, 3, 4], "lead": "sq", "duty": 0.125, "sus": 0.2, "bass": "root8", "drums": "", "density": 0.35, "seed": 29},
@@ -37,6 +38,8 @@ static func _h(a: int, b: int, s: int) -> float:
 
 
 static func compose(d: Dictionary) -> Array:
+	if d.get("score", "") == "sword":
+		return _sword_theme()
 	var notes := []
 	var beats: int = d.get("beats", 4)
 	var bars: int = d.get("bars", 8)
@@ -159,4 +162,71 @@ static func compose(d: Dictionary) -> Array:
 					notes.append({"t": t0 + k + 0.5, "drum": "hat", "v": 0.18})
 					if k % 2 == 1:
 						notes.append({"t": t0 + k, "drum": "snare", "v": 0.2})
+	return notes
+
+
+static func _sword_theme() -> Array:
+	## The Sword Stories theme, D minor, 4/4, 16 bars. Sad, and a little
+	## unresolved: the bass sinks a semitone at a time under the opening chord
+	## (D, C#, C, B), the B natural lifts where you expect it to fall, the
+	## melody leans on E over B-flat, and the last bar hangs on that E instead
+	## of coming home, so the loop always asks another question.
+	var notes := []
+	# [bass, chord tones] per bar
+	var chords := [
+		[38, [62, 65, 69]],      # Dm
+		[37, [61, 65, 69]],      # Dm/C#
+		[36, [60, 65, 69]],      # Dm7/C
+		[35, [62, 67, 71]],      # G/B
+		[34, [62, 65, 69]],      # Bbmaj7
+		[31, [62, 64, 70]],      # Gm6
+		[33, [62, 64, 69]],      # Asus4 (resolves to A in the melody)
+		[38, [62, 64, 69]],      # Dm(add9)
+	]
+	# the melody, bar by bar: [midi, beats]; 0 is a rest
+	var tune := [
+		[[69, 1.0], [74, 1.0], [76, 0.5], [77, 0.5], [76, 1.0]],
+		[[74, 2.5], [73, 1.5]],
+		[[77, 1.0], [76, 0.5], [74, 0.5], [72, 1.0], [69, 1.0]],
+		[[71, 3.0], [74, 1.0]],
+		[[77, 1.5], [76, 0.5], [74, 1.0], [69, 1.0]],
+		[[70, 1.0], [74, 1.0], [76, 2.0]],
+		[[74, 2.0], [73, 1.0], [76, 1.0]],
+		[[74, 1.0], [76, 0.5], [74, 0.5], [69, 2.0]],
+		# second time: higher, reaching, then left hanging
+		[[81, 1.0], [77, 1.0], [76, 0.5], [74, 0.5], [76, 1.0]],
+		[[77, 2.0], [76, 1.0], [73, 1.0]],
+		[[72, 1.0], [74, 1.0], [77, 1.0], [81, 1.0]],
+		[[79, 2.0], [74, 1.0], [71, 1.0]],
+		[[81, 1.5], [77, 0.5], [76, 1.0], [74, 1.0]],
+		[[70, 1.0], [74, 1.0], [79, 1.0], [76, 1.0]],
+		[[76, 2.0], [73, 1.0], [69, 1.0]],
+		[[74, 2.0], [0, 0.5], [76, 1.5]],
+	]
+	for bar in 16:
+		var t0 := float(bar * 4)
+		var ch: Array = chords[bar % 8]
+		var bass: int = ch[0]
+		var tones: Array = ch[1]
+		# low bass: one long note a bar, a soft octave echo on beat 3
+		notes.append({"t": t0, "d": 2.9, "m": bass, "w": "tri", "v": 0.22, "sus": 0.75})
+		notes.append({"t": t0 + 2.0, "d": 1.9, "m": bass + 12, "w": "tri", "v": 0.09, "sus": 0.6})
+		# a plucked, harp-like broken chord in eighths, rolling up and back
+		var roll := [bass + 12, tones[0], tones[1], tones[2], tones[0] + 12, tones[2], tones[1], tones[0]]
+		for k in 8:
+			notes.append({"t": t0 + k * 0.5, "d": 0.9, "m": roll[k], "w": "sin", "v": 0.07 if k > 0 else 0.09, "sus": 0.25})
+		# a quiet pad underneath, the second half only, so the theme grows
+		if bar >= 8:
+			for m in tones:
+				notes.append({"t": t0, "d": 3.95, "m": m - 12, "w": "sin", "v": 0.035, "sus": 0.9})
+		# a far-off bell at the turns of the phrase: the blade, listening
+		if bar in [4, 12]:
+			notes.append({"t": t0, "d": 3.0, "m": 86, "w": "sin", "v": 0.05, "sus": 0.15})
+			notes.append({"t": t0 + 0.02, "d": 3.0, "m": 93, "w": "sin", "v": 0.02, "sus": 0.1})
+		# the melody: a lonely lead with a slow vibrato
+		var bt := t0
+		for nt: Array in tune[bar]:
+			if nt[0] > 0:
+				notes.append({"t": bt, "d": float(nt[1]) - 0.06, "m": nt[0], "w": "tri", "v": 0.19, "sus": 0.6, "vib": 0.006})
+			bt += float(nt[1])
 	return notes

@@ -189,6 +189,9 @@ func _store_song(name: String, data: PackedFloat32Array) -> void:
 		WorkerThreadPool.wait_for_task_completion(task)
 	_pending.erase(name)
 	songs[name] = _wav(data, true)
+	# music() asked for it while it was still rendering: start it now
+	if name == current_song and not muted_music:
+		_start_song(name, 1.0, MUSIC_DB)
 
 
 func music_volume(db: float, t: float = 0.5) -> void:
@@ -223,6 +226,11 @@ func _render_song(def: Dictionary) -> PackedFloat32Array:
 		var rel := int(0.06 * RATE)
 		var ph := 0.0
 		var vib: float = note.get("vib", 0.0)
+		# read once per note, not once per sample
+		var sus := float(note.get("sus", 0.7))
+		var duty := float(note.get("duty", 0.5))
+		var decay := 0.18 * RATE
+		var step := f / RATE
 		for i in dur + rel:
 			var idx := start + i
 			if idx >= n:
@@ -231,12 +239,12 @@ func _render_song(def: Dictionary) -> PackedFloat32Array:
 			if i > dur:
 				env *= 1.0 - float(i - dur) / rel
 			else:
-				env *= lerpf(1.0, float(note.get("sus", 0.7)), minf(1.0, float(i) / (0.18 * RATE)))
-			var ff := f
+				env *= lerpf(1.0, sus, minf(1.0, float(i) / decay))
 			if vib > 0.0:
-				ff *= 1.0 + sin(i * 0.0016) * vib
-			ph += ff / RATE
-			out[idx] += _osc(ph, wave, note.get("duty", 0.5)) * vol * env
+				ph += step * (1.0 + sin(i * 0.0016) * vib)
+			else:
+				ph += step
+			out[idx] += _osc(ph, wave, duty) * vol * env
 	return out
 
 

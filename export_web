@@ -1,0 +1,5 @@
+#!/bin/bash
+# Build the web export into exports/ (upload it wherever you host builds).
+cd "$(dirname "$0")"
+mkdir -p exports
+godot --headless --export-release "web" exports/index.html

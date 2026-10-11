@@ -44,7 +44,7 @@ const CAST := {
 	"guard2": {"id": "guard2", "name": "Caravan Guard", "voice": "man", "style": "short", "adult": true, "belt": true, "mustache": true,
 		"skin": Color("9a7058"), "hair": Color("2b1f2a"), "top": Color("a07a52"), "bottom": Color("4a3a32"), "shoes": Color("3b2c3c"),
 		"hat": "helm", "hatc": Color("6c6672"), "weapon": "spear"},
-	"hunter": {"id": "hunter", "name": "Cream Hunter", "voice": "hunter", "style": "short", "adult": true, "mask": true, "maskc": Color("e6dcc6"),
+	"hunter": {"id": "hunter", "name": "Cream Hunter", "voice": "hunter", "style": "bald", "adult": true, "mask": true, "maskc": Color("e6dcc6"),
 		"skin": Color("c8a888"), "hair": Color("4a3428"), "top": Color("d8c8a8"), "bottom": Color("8c7258"), "shoes": Color("4a3428"),
 		"hat": "hood", "hatc": Color("e6dcc6"), "sash": true, "sashc": Color("b8a888"), "weapon": "hook"},
 	"pilgrim": {"id": "pilgrim", "name": "Ysa", "voice": "woman", "style": "long", "adult": true, "dress": true,

@@ -1,0 +1,234 @@
+extends Node
+## Debug autopilot. Set CT_TEST to a scenario; screenshots go to CT_OUT and
+## saves to CT_DIR (never the player's own files).
+##   story            play from CT_SCENE (default P1) to an ending with
+##                    CT_AUTOPLAY on; CT_CHOICES / CT_ACT / CT_SWORD /
+##                    CT_EXPLORE steer it. CT_STATE="var=n,flag,..." presets.
+##   battle:<kind>    a sample battle, screenshots through its animations
+##   shell            title, endings, settings, records, achievements
+##   minigame:<kind>  one minigame (real logic, random presses)
+##   cine:<name>      a backdrop, screenshot
+
+var out := ""
+var main: Node
+var shooting := false
+var shot_n := 0
+var prefix := "shot"
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	out = OS.get_environment("CT_OUT")
+	main = Game.main
+	_run.call_deferred(OS.get_environment("CT_TEST"))
+
+
+func shot(name: String) -> void:
+	if out == "":
+		return
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("%s/%s.png" % [out, name])
+
+
+func _shoot_loop(every: float) -> void:
+	shooting = true
+	while shooting:
+		await get_tree().create_timer(every, true, false, true).timeout
+		if not shooting:
+			break
+		shot_n += 1
+		await shot("%s_%03d" % [prefix, shot_n])
+
+
+func wait(t: float) -> void:
+	await get_tree().create_timer(t, true, false, true).timeout
+
+
+func _send(action: String, pressed: bool) -> void:
+	var e := InputEventAction.new()
+	e.action = action
+	e.pressed = pressed
+	Input.parse_input_event(e)
+
+
+func tap(action: String, t: float = 0.25) -> void:
+	_send(action, true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_send(action, false)
+	await wait(t)
+
+
+func _preset() -> void:
+	for kv in OS.get_environment("CT_STATE").split(",", false):
+		if kv.contains(":"):
+			var q := kv.split(":")
+			match q[0]:
+				"lore":
+					Game.run.lore.append(q[1])
+				"clue":
+					Game.run.clues.append(q[1])
+				"item":
+					Game.run.items.append(q[1])
+				"returned":
+					Game.run.returned.append(q[1])
+		elif kv.contains("="):
+			var p := kv.split("=")
+			if Game.VARS.has(p[0]):
+				Game.run.vars[p[0]] = int(p[1])
+			else:
+				Game.set_flag(p[0], p[1])
+		else:
+			Game.set_flag(kv)
+
+
+func _run(scenario: String) -> void:
+	var every := float(OS.get_environment("CT_SHOT_EVERY")) if OS.get_environment("CT_SHOT_EVERY") != "" else 0.0
+	if scenario == "story":
+		prefix = "story"
+		Game.new_run()
+		var sc := OS.get_environment("CT_SCENE")
+		if sc != "":
+			Game.run.scene = sc
+			main.story.prepare_jump(sc)
+		_preset()
+		if every > 0.0:
+			_shoot_loop(every)
+		var t0 := Time.get_ticks_msec()
+		await main.play_story()
+		shooting = false
+		print("[auto] story done in %.1fs; endings: %s" % [(Time.get_ticks_msec() - t0) / 1000.0, ", ".join(Game.profile.endings.keys())])
+		print("[auto] vars: ", Game.profile.last_route.get("vars", {}), "  achievements: ", Game.achieved.size())
+		get_tree().quit()
+		return
+	if scenario.begins_with("battle:"):
+		var kind := scenario.substr(7)
+		prefix = "battle_" + kind
+		Game.new_run()
+		Game.run.scene = OS.get_environment("CT_SCENE") if OS.get_environment("CT_SCENE") != "" else "S5"
+		Game.set_flag("has_sword")
+		Game.set_flag("mara_joined")
+		Game.set_flag("fen_fights")
+		_preset()
+		var enemies := []
+		match kind:
+			"jackals":
+				enemies = [BattleDefs.enemy("jackal"), BattleDefs.enemy("jackal"), BattleDefs.enemy("jackal")]
+			"hunters":
+				enemies = [BattleDefs.enemy("hunter"), BattleDefs.enemy("hunter_captain"), BattleDefs.enemy("guard")]
+			"factor":
+				enemies = [BattleDefs.enemy("factor")]
+		if every > 0.0:
+			_shoot_loop(every)
+		var r: Dictionary = await main.battle({"id": "test", "title": "A test of steel", "bg": OS.get_environment("CT_BG") if OS.get_environment("CT_BG") != "" else "road",
+			"party": main.story.party(), "enemies": enemies})
+		shooting = false
+		print("[auto] battle result: ", r.outcome, " turns ", r.turns)
+		get_tree().quit()
+		return
+	if scenario.begins_with("cine:"):
+		for nm in scenario.substr(5).split(","):
+			var c := Cinema.open()
+			c.show_bg(nm, 0, 0.0)
+			main.fade_rect.color.a = 0.0
+			await wait(0.2)
+			await shot("cine_" + nm)
+			c.queue_free()
+		get_tree().quit()
+		return
+	if scenario.begins_with("bbg:"):
+		for nm in scenario.substr(4).split(","):
+			var r := TextureRect.new()
+			r.texture = Art.battle_bg(nm, 0)
+			main.cine_layer.add_child(r)
+			main.fade_rect.color.a = 0.0
+			await wait(0.2)
+			await shot("bbg_" + nm)
+			r.queue_free()
+		get_tree().quit()
+		return
+	if scenario.begins_with("minigame:"):
+		var kind := scenario.substr(9)
+		Game.new_run()
+		var mashing := true
+		var masher := func() -> void:
+			while mashing:
+				await tap(["accept", "left", "right", "up", "down", "accept"][randi() % 6], randf_range(0.05, 0.3))
+		masher.call()
+		if out != "":
+			prefix = "mg_" + kind
+			_shoot_loop(1.0)
+		var r: Dictionary = await main.minigame(kind, {})
+		mashing = false
+		shooting = false
+		print("[auto] minigame %s: %s" % [kind, r])
+		get_tree().quit()
+		return
+	if scenario.begins_with("map:"):
+		# load a field map from an act and screenshot it
+		var parts := scenario.substr(4).split(".")
+		Game.new_run()
+		var act: Node = main.story.acts[parts[0]]
+		var def: Dictionary = act.call(parts[1] + "_map")
+		main.story.part = act
+		main.load_map(def, Vector2i(int(OS.get_environment("CT_X")) if OS.get_environment("CT_X") != "" else 2, int(OS.get_environment("CT_Y")) if OS.get_environment("CT_Y") != "" else 3), 0)
+		main.fade_rect.color.a = 0.0
+		await wait(0.6)
+		await shot("map_" + parts[1])
+		get_tree().quit()
+		return
+	match scenario:
+		"check":
+			var n := 0
+			for p in load("res://tools/check.gd").scan("res://scripts") + load("res://tools/check.gd").scan("res://tools"):
+				var sc = load(p)
+				n += 1
+				if sc == null or not sc.can_instantiate():
+					print("FAILED ", p)
+			print("checked ", n, " scripts")
+			get_tree().quit()
+		"shell":
+			main.fade_rect.color.a = 0.0
+			main.title()
+			await wait(3.5)
+			await shot("shell_title")
+			for scr in [EndingsScreen.new(), SettingsScreen.new(), RecordsScreen.new(), AchievementsScreen.new()]:
+				main.cine_layer.add_child(scr)
+				await wait(0.5)
+				await shot("shell_" + scr.get_class() + str(shot_n))
+				shot_n += 1
+				scr.queue_free()
+			get_tree().quit()
+		"pause":
+			Game.new_run()
+			_preset()
+			Game.run.scene = "S5"
+			var act: Node = main.story.acts.act2
+			main.story.part = act
+			main.load_map(act.kesh_map(), Vector2i(10, 9), 0)
+			main.fade_rect.color.a = 0.0
+			main.in_story = true
+			await wait(0.4)
+			main.dialog.backlog = [["Rook", "Ladies. Gentlemen. Assorted goats."], ["", "The Saltway runs four hundred miles."]]
+			main.world.run(main.field_menu)
+			await wait(0.6)
+			await shot("pause_status")
+			await tap("down")
+			await wait(0.3)
+			await shot("pause_log")
+			get_tree().quit()
+		"icon":
+			var img: Image = ArtUI.app_icon().img
+			img.resize(256, 256, Image.INTERPOLATE_NEAREST)
+			img.save_png(ProjectSettings.globalize_path("res://icon.png"))
+			print("[auto] wrote icon.png")
+			get_tree().quit()
+		"opening":
+			if every > 0.0:
+				prefix = "opening"
+				_shoot_loop(every)
+			await main.opening()
+			get_tree().quit()
+		_:
+			print("[auto] unknown scenario ", scenario)
+			get_tree().quit()

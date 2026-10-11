@@ -416,6 +416,9 @@ static func _draw(b: PixBuf, s: Dictionary, dir: int, frame: int, mood: String, 
 		if not back:
 			b.rect(tx - 0.5 + (1.0 if side else 0.0), ty - 3, 1, by - ty + 2, Pal.shade(rc))
 			b.rect(tx - 3.5, ty + 0.3, 7, 1, s.get("sashc", Pal.shade(rc)))
+		if s.get("patches", false):
+			# one blue patch he never quite gave up
+			b.rect(tx + (2 if side else -4), ty - 1, 2, 2, Pal.BLUE)
 	elif jacket != null:
 		b.ball(tx, ty, trx, 3.2 + lift * 0.3, jacket)
 		if not back:
@@ -531,6 +534,9 @@ static func _draw(b: PixBuf, s: Dictionary, dir: int, frame: int, mood: String, 
 	b.scale_about(Vector2(hx, hy), HEAD_K)
 	b.ball(hx, hy, 6.4, 5.8, skin)
 	_hair(b, s, style, hair, dir, hx, hy, head)
+	if s.get("hat", "") == "hood":
+		# a hood frames the face, so it goes on before the face does
+		_hat(b, s, dir, hx, hy)
 	if not back:
 		_face(b, s, dir, mood, hx, hy, skin, head)
 		if side:
@@ -551,7 +557,7 @@ static func _draw(b: PixBuf, s: Dictionary, dir: int, frame: int, mood: String, 
 	elif style == "bald" and not s.has("hat"):
 		# a shaved head still catches the light
 		b.rect(hx - 3.4 + (-0.6 if side else 0.0), hy - 5.0, 2.4, 0.9, Pal.hi(skin).lerp(skin, 0.4))
-	if s.has("hat"):
+	if s.has("hat") and s.hat != "hood":
 		_hat(b, s, dir, hx, hy)
 	b.scale_about(Vector2.ZERO, 1.0)
 	if s.get("beard", false) and not back:
@@ -1103,10 +1109,7 @@ static func _hat(b: PixBuf, s: Dictionary, dir: int, hx: float, hy: float) -> vo
 		"hood":
 			# a deep cloth hood: covers crown and sides, face left open
 			b.ball(hx + o, hy - 1.0, 7.4, 6.8, hc)
-			if not back:
-				var fx := hx + (1.4 if side else 0.0)
-				b.ball(fx, hy + 1.6, 5.2 if side else 5.6, 4.6, s.get("skin", Pal.SKIN))
-				b.rect(fx - 5.0, hy - 3.6, 10.0, 1.2, Pal.shade(hc))
+			b.rect(hx - 6.4 + o, hy - 4.6, 12.8, 1.0, Pal.shade(hc))
 		"turban":
 			b.ball(hx + o, hy - 4.2, 7.2, 4.4, hc)
 			for k in 3:

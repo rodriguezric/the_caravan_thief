@@ -19,40 +19,22 @@ var help_text := ""
 var keys_text := ""
 var bg_name := "ink"
 var song := "minigame"
+var keep_song := false
 ## Touch layout for this game (see TouchControls) and optional tilt steering.
 var touch_layout := ""
 var touch_tilt := ""
-const TOUCH := {"log_roll": ["lr", "x"], "shoo": ["arrows", ""], "disco": ["arrows", ""], "highc": ["arrows", ""],
-	"sing_back": ["arrows", ""], "season": ["tap", ""], "dive_bomb": ["tap", ""], "void_drift": ["pad", "xy"],
-	"tea_pour": ["hold", ""], "lift": ["mash", ""], "curve_away": ["mash", ""], "comet_fall": ["lr", "x"],
-	"backgammon": ["touch", ""], "ocean_hum": ["ud", ""], "formation": ["ud", ""]}
+const TOUCH := {"lockpick": ["tap", ""], "pickpocket": ["hold", ""], "loot": ["pad", ""]}
 
 
 static func create(kind: String, p_opts: Dictionary = {}) -> Minigame:
 	var g: Minigame
 	match kind:
-		"log_roll":
-			g = MgLogRoll.new()
-		"shoo", "disco", "highc":
-			g = MgArrows.new()
-		"season", "dive_bomb":
-			g = MgTiming.new()
-		"void_drift":
-			g = MgVoidDrift.new()
-		"tea_pour":
-			g = MgTeaPour.new()
-		"lift", "curve_away":
-			g = MgMash.new()
-		"comet_fall":
-			g = MgCometFall.new()
-		"backgammon":
-			g = MgBackgammon.new()
-		"ocean_hum":
-			g = MgOceanHum.new()
-		"sing_back":
-			g = MgSingBack.new()
-		"formation":
-			g = MgFormation.new()
+		"lockpick":
+			g = MgLockpick.new()
+		"pickpocket":
+			g = MgPickpocket.new()
+		"loot":
+			g = MgLoot.new()
 		_:
 			g = Minigame.new()
 	g.id = kind
@@ -102,7 +84,8 @@ func _draw_game(_d: Node2D) -> void:
 
 
 func play() -> Dictionary:
-	Sfx.music(song, 0.4)
+	if not keep_song:
+		Sfx.music(song, 0.4)
 	var prev_layout := Game.touch_layout
 	Game.touch_layout = touch_layout
 	Game.touch_tilt = touch_tilt
@@ -111,10 +94,10 @@ func play() -> Dictionary:
 	running = true
 	Game.touch_running = true
 	var res: Dictionary
-	var auto := OS.get_environment("PM_AUTOPLAY")
+	var auto := OS.get_environment("CT_AUTOPLAY")
 	if auto != "":
 		# automated test runs: let the game run briefly, then resolve it
-		await get_tree().create_timer(float(OS.get_environment("PM_AUTOPLAY_T")) if OS.get_environment("PM_AUTOPLAY_T") != "" else 1.0).timeout
+		await get_tree().create_timer(float(OS.get_environment("CT_AUTOPLAY_T")) if OS.get_environment("CT_AUTOPLAY_T") != "" else 1.0).timeout
 		res = auto_result(auto == "win")
 	else:
 		res = await _game()
@@ -159,7 +142,7 @@ func _title_card() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	while not Input.is_action_just_pressed("accept"):
-		if OS.get_environment("PM_TEST") != "" and t > 0.6:
+		if OS.get_environment("CT_TEST") != "" and t > 0.6:
 			break
 		await get_tree().process_frame
 	Sfx.play("confirm")
@@ -217,7 +200,7 @@ func _result_banner(res: Dictionary) -> void:
 		var f := Fx.new()
 		f.z_index = 49
 		add_child(f)
-		f.burst(Vector2(160, 70), 50, [Pal.LEMON, Pal.ROSE, Pal.CANDLE, Pal.WHITE, Pal.GLOW], Vector2(30, 90), Vector2(1.0, 2.0),
+		f.burst(Vector2(160, 70), 50, [Pal.LEMON, Pal.BRASS, Pal.CANDLE, Pal.WHITE, Pal.GLOW], Vector2(30, 90), Vector2(1.0, 2.0),
 			{"up": 60.0, "acc": Vector2(0, 50), "drag": 0.97, "shape": 3, "size": 2.0, "wobble": 30.0})
 	await create_tween().tween_property(l, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).finished
 	await get_tree().create_timer(1.3).timeout

@@ -445,7 +445,7 @@ func _uses_pad() -> bool:
 func _field_control() -> bool:
 	## The player is walking around: the one time the pad is really needed.
 	var m: Node = Game.main
-	if m == null or not is_instance_valid(m) or not m.in_chapter or m.dialog.visible:
+	if m == null or not is_instance_valid(m) or not m.in_story or m.dialog.visible:
 		return false
 	var w: World = m.world
 	if w == null or not is_instance_valid(w) or not w.visible or w.busy or w.paused or not w.player.visible:
@@ -581,7 +581,7 @@ func _pause() -> void:
 	if m == null:
 		return
 	var w: World = m.world
-	if w and is_instance_valid(w) and w.visible and not w.busy and not w.paused and not m.dialog.visible and m.in_chapter:
+	if w and is_instance_valid(w) and w.visible and not w.busy and not w.paused and not m.dialog.visible and m.in_story:
 		w.run(m.field_menu)
 	else:
 		_tap("cancel")

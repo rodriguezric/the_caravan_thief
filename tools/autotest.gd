@@ -242,7 +242,7 @@ func _run(scenario: String) -> void:
 			main.fade_rect.color.a = 0.0
 			main.in_story = true
 			await wait(0.4)
-			main.dialog.backlog = [["Rook", "Ladies. Gentlemen. Assorted goats."], ["", "The Saltway runs four hundred miles."]]
+			main.dialog.backlog = [["Rook", "Ladies. Gentlemen. Wick."], ["", "The Saltway runs four hundred miles."]]
 			main.world.run(main.field_menu)
 			await wait(0.6)
 			await shot("pause_status")

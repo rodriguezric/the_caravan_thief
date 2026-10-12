@@ -56,7 +56,7 @@ func rookery_map(night: bool = true) -> Dictionary:
 			{"kind": "rubble", "tile": Vector2i(19, 9), "v": 1},
 		],
 		"npcs": npcs,
-		"events": [{"tile": Vector2i(10, 10), "id": "gate", "text": "The tower gate. Bracken wedged a cart axle across it. It would stop a goat. Probably."}],
+		"events": [{"tile": Vector2i(10, 10), "id": "gate", "text": "The tower gate. Bracken wedged a cart axle across it. It would stop a stiff breeze. Probably."}],
 		"exits": [],
 	}
 
@@ -82,7 +82,7 @@ func scene_s4() -> Variant:
 		await s.wait(0.32)
 	await s.say("bracken", "WE ROBBED THE FACTOR! Nobody robs the Factor!", "laugh")
 	fen.gesture("laugh", 1.2)
-	await s.say("fen", "Nobody's ever tried, you great goat. That's not the same thing.", "laugh")
+	await s.say("fen", "Nobody's ever tried, you great lump. That's not the same thing.", "laugh")
 	rk.gesture("bow", 1.2)
 	await s.say("rook", "The Rook of the Saltway thanks his public.", "grin")
 	await c.close(0.6)

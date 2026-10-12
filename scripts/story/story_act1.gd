@@ -83,7 +83,7 @@ func scene_p1() -> Variant:
 	# Rook rehearses his legend for an audience of one
 	s.sfx("whiff", 1.2, -10.0)
 	await s.a("player").gesture("bow", 1.4)
-	await s.say("rook", "Ladies. Gentlemen. Assorted goats. Tremble, for you stand before... the ROOK of the SALTWAY!", "grin")
+	await s.say("rook", "Ladies. Gentlemen. Wick. Tremble, for you stand before... the ROOK of the SALTWAY!", "grin")
 	s.a("player").gesture("victory", 1.0)
 	wick.hop(5.0)
 	wick.emote("music")

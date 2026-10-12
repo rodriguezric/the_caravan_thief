@@ -90,6 +90,9 @@ func setup(map_def: Dictionary, tile: Vector2i, facing: int, p_handler: Object) 
 	add_child(hud)
 	hint = Sprite2D.new()
 	hint.texture = Art.ui("emote_!")
+	# tail tip at the node's position, like Actor.emote's bubbles
+	hint.centered = false
+	hint.offset = Vector2(-6, -13)
 	hint.z_index = 30
 	hint.visible = false
 	hint.modulate.a = 0.85
@@ -578,7 +581,7 @@ func _update_hint() -> void:
 	hint.visible = show
 	if show:
 		var t := Time.get_ticks_msec() / 1000.0
-		hint.position = player.position + Vector2(7, -40 + (1 if fmod(t, 0.6) < 0.3 else 0))
+		hint.position = player.position + player.head_top() + Vector2(0, -1 if fmod(t, 0.6) < 0.3 else 0)
 
 
 func _interact() -> void:

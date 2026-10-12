@@ -38,6 +38,9 @@ var mouth_open := false
 var pose_anim := false
 var dust_t := 0.0
 var _gesture_id := 0
+var _head_tex: Texture2D
+var _head_flip := false
+var _head_at := Vector2.ZERO
 var _key := ""
 
 
@@ -359,12 +362,11 @@ func emote(kind: String, hold: float = 1.2) -> void:
 		bubble.queue_free()
 	bubble = Sprite2D.new()
 	bubble.texture = Art.ui("emote_" + kind)
-	var top := -38.0 if not spec.get("tall", false) else -40.0
-	if spec.get("kind", "human") == "ox":
-		top = -30.0
-	elif spec.get("kind", "human") in ["crow", "jackal"]:
-		top = -24.0
-	bubble.position = Vector2(6, top)
+	# The bubble's tail points down at the top of the head, wherever the
+	# current frame actually puts it (hair, hats, kneeling, creatures).
+	bubble.centered = false
+	bubble.offset = Vector2(-6, -13)
+	bubble.position = head_top()
 	bubble.z_index = 20
 	add_child(bubble)
 	bubble.scale = Vector2(0.2, 0.2)
@@ -376,6 +378,47 @@ func emote(kind: String, hold: float = 1.2) -> void:
 	tw.tween_interval(hold)
 	tw.tween_property(b, "modulate:a", 0.0, 0.2)
 	tw.tween_callback(b.queue_free)
+
+
+func head_top() -> Vector2:
+	## The top of the drawn sprite, relative to the feet: the first opaque row,
+	## centred on that row's opaque pixels (a jackal's head is off to one side).
+	## Bubbles and prompts hang their tails here. Cached per frame texture.
+	if sprite.texture == null:
+		return Vector2(0, -26)
+	if _head_tex != sprite.texture or _head_flip != sprite.flip_h:
+		_head_tex = sprite.texture
+		_head_flip = sprite.flip_h
+		_head_at = _find_head_top()
+	return _head_at + sprite.position.round()
+
+
+func _find_head_top() -> Vector2:
+	var img := sprite.texture.get_image()
+	if img == null:
+		return Vector2(0, -26)
+	for y in img.get_height():
+		var x0 := -1
+		var x1 := -1
+		for x in img.get_width():
+			if img.get_pixel(x, y).a > 0.5:
+				if x0 < 0:
+					x0 = x
+				x1 = x
+		if x0 >= 0:
+			# look a couple of rows down so a single spike of hair doesn't steer it
+			var row := mini(y + 3, img.get_height() - 1)
+			var r0 := x0
+			var r1 := x1
+			for x in img.get_width():
+				if img.get_pixel(x, row).a > 0.5:
+					r0 = mini(r0, x)
+					r1 = maxi(r1, x)
+			var cx := (r0 + r1 + 1) / 2.0
+			if sprite.flip_h:
+				cx = img.get_width() - cx
+			return (Vector2(cx, y) + sprite.offset).round() + Vector2(0, -1)
+	return Vector2(0, -26)
 
 
 func shake(t: float = 0.3, amp: float = 1.0) -> void:

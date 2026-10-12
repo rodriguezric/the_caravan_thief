@@ -11,6 +11,14 @@ achievement pattern, multiple-ending structure and control scheme.
 
 Everything, art and sound included, is generated in code.
 
+## Version
+
+`config/version` in `project.godot` (shown on the title screen), mirrored in
+`export_presets.cfg` (`version/name`; Android `version/code` = major*10000 +
+minor*100 + patch). Every change bumps it: **release.feature.bugfix**, so a
+bug fix bumps the right number, a new feature the middle one (bug fix reset to
+0), a release the left one. Counting started at 0.0.0.
+
 ## Running
 
 ```bash

@@ -2,8 +2,9 @@ class_name TitleScreen
 extends Control
 ## Title: the Saltway at dusk, a caravan crossing the horizon. The letters
 ## surface one by one over a low hum. Now and then Rook walks along the road
-## below with the crow circling him. Continue (when there's a save), New
-## Game, Endings, Achievements, Records, Settings, Quit.
+## below with the crow circling him. Continue and Load Game (when there's a
+## save), New Game, Endings, Achievements, Records, Settings, Quit. New Game
+## and Load Game open the save-slot list.
 
 var t := 0.0
 var bg: TextureRect
@@ -100,8 +101,8 @@ func run() -> String:
 	var keys := []
 	var opts := []
 	if Game.has_save():
-		keys.append("continue")
-		opts.append("Continue")
+		keys.append_array(["continue", "load"])
+		opts.append_array(["Continue", "Load Game"])
 	keys.append_array(["new", "endings", "achievements", "records", "settings", "quit"])
 	opts.append_array(["New Game", "Endings", "Achievements", "Records", "Settings", "Quit"])
 	menu = Menu.make(self, opts, Vector2(118, 186), Vector2(84, opts.size() * 10 + 7))
@@ -124,9 +125,66 @@ func run() -> String:
 		var r := await menu.ask()
 		if r < 0:
 			continue
-		if keys[r] == "new" and Game.has_save():
-			var c: int = await Game.main.dialog.ask("Start a new journey? Your saved one will be overwritten when you reach the first scene.", ["Keep my journey", "Start over"])
-			if c != 1:
-				continue
+		match keys[r]:
+			"continue":
+				Game.slot = Game.latest_slot()
+			"load":
+				var i := await pick_slot("Load which journey?", false)
+				if i < 0:
+					continue
+				Game.slot = i
+				return "continue"
+			"new":
+				if Game.has_save():
+					var i := await pick_slot("Start the new journey in which slot?", true)
+					if i < 0:
+						continue
+					if Game.has_slot(i):
+						var c: int = await Game.main.dialog.ask("Start over in slot %d? The journey saved there will be overwritten when you reach the first scene." % (i + 1), ["Keep my journey", "Start over"])
+						if c != 1:
+							continue
+					Game.slot = i
+				else:
+					Game.slot = 0
 		return keys[r]
 	return "quit"
+
+
+func pick_slot(heading: String, for_new: bool) -> int:
+	## The save-slot list. Returns the slot, or -1 when backed out of. Empty
+	## slots can be picked only for a new journey.
+	var box := Control.new()
+	add_child(box)
+	var shade := ColorRect.new()
+	shade.color = Color(Pal.INK, 0.55)
+	shade.size = Vector2(320, 180)
+	box.add_child(shade)
+	var head := Art.shadow_label(heading, Pal.CANDLE)
+	head.position = Vector2(160 - Art.text_width(heading) / 2.0, 44)
+	box.add_child(head)
+	var infos := []
+	var opts := []
+	for i in Game.SLOTS:
+		var info := Game.slot_info(i)
+		infos.append(info)
+		if info.is_empty():
+			opts.append({"text": "%d  - empty -" % (i + 1), "enabled": for_new})
+		else:
+			opts.append({"text": "%d  %s" % [i + 1, info.title], "right": Game.clock(info.time)})
+	var m := Menu.make(box, opts, Vector2(70, 56), Vector2(180, Game.SLOTS * 10 + 7))
+	m.index = maxi(0, Game.latest_slot()) if not for_new else maxi(0, Game.first_free_slot())
+	m.set_entries(opts)
+	var detail := Art.shadow_label("", Pal.TEXT_DIM)
+	box.add_child(detail)
+	m.moved.connect(func(i: int) -> void:
+		var info: Dictionary = infos[i]
+		detail.text = "A new journey starts here" if info.is_empty() else "%s - %s - saved %s" % [info.act.split(":")[0], info.place, Game.date(info.saved)]
+		detail.position = Vector2(160 - Art.text_width(detail.text) / 2.0, m.position.y + m.size.y + 3))
+	m.moved.emit(m.index)
+	menu.visible = false
+	save_line.visible = false
+	var r := await m.ask()
+	box.queue_free()
+	menu.visible = true
+	save_line.visible = true
+	return r

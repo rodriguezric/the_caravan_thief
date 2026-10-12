@@ -144,7 +144,7 @@ func run() -> String:
 				await s.run()
 				s.queue_free()
 			5:
-				var c: int = await Game.main.dialog.ask("Quit to the title? Your journey is saved at the start of this scene.", ["Keep playing", "Save & quit"])
+				var c: int = await Game.main.dialog.ask("Quit to the title? Your journey is saved in slot %d at the start of this scene." % (Game.slot + 1), ["Keep playing", "Save & quit"])
 				if c == 1:
 					return "title"
 	return "resume"

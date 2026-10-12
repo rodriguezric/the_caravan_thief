@@ -6,11 +6,15 @@ extends Node
 ## - settings: audio, accessibility, battle speed. Own file; resetting it never
 ##   touches progress.
 ## - run: the playthrough in progress: the thematic variables, relationships,
-##   flags, what Rook carries, and the decisions made. Saved at the start of
-##   every scene (Continue picks up there).
+##   flags, what Rook carries, and the decisions made. Saved into one of
+##   SLOTS save slots at the start of every scene (Continue picks up the most
+##   recent one; Load Game chooses).
 
 const PROFILE_PATH := "user://caravan_profile.json"
-const SAVE_PATH := "user://caravan_save.json"
+const SAVE_PATH := "user://caravan_save_%d.json"
+## Before save slots there was one save file; it becomes slot 1.
+const OLD_SAVE_PATH := "user://caravan_save.json"
+const SLOTS := 3
 const ACH_PATH := "user://caravan_achievements.json"
 const SETTINGS_PATH := "user://caravan_settings.json"
 const DEFAULT_SETTINGS := {"master": 0.8, "music": 0.7, "sfx": 0.8, "voice": 0.7, "reduced_motion": false, "text_speed": 1,
@@ -39,6 +43,8 @@ var testing := false
 # --- the current run -----------------------------------------------------
 var run := {}
 var play_started := 0.0
+## The save slot the current run writes to (0-based; shown as 1..SLOTS).
+var slot := 0
 
 
 func _ready() -> void:
@@ -47,6 +53,7 @@ func _ready() -> void:
 	load_profile()
 	load_achievements()
 	apply_settings()
+	_migrate_old_save()
 
 
 func _path(p: String) -> String:
@@ -149,6 +156,8 @@ func _add_play_time() -> void:
 	if play_started > 0.0:
 		var now := Time.get_ticks_msec() / 1000.0
 		profile.records.play_time = float(profile.records.play_time) + (now - play_started)
+		if not run.is_empty():
+			run.time = float(run.get("time", 0.0)) + (now - play_started)
 		play_started = now
 
 
@@ -158,7 +167,7 @@ func clear_progress() -> void:
 	achv_stats = {}
 	save_profile()
 	save_achievements()
-	clear_save()
+	clear_saves()
 
 
 func clear_all() -> void:
@@ -179,8 +188,52 @@ func new_run() -> void:
 	save_profile()
 
 
+func _migrate_old_save() -> void:
+	## The single save from before slots moves into slot 1 (unless slot 1 is taken).
+	var old := _path(OLD_SAVE_PATH)
+	if not _can_write() or not FileAccess.file_exists(old):
+		return
+	var d = _read_json(old)
+	if d is Dictionary and not has_slot(0):
+		if not d.has("saved"):
+			d.saved = FileAccess.get_modified_time(old)
+		_write_json(slot_path(0), d)
+	if has_slot(0):
+		DirAccess.remove_absolute(old)
+
+
+func slot_path(i: int) -> String:
+	return _path(SAVE_PATH % (i + 1))
+
+
+func has_slot(i: int) -> bool:
+	return FileAccess.file_exists(slot_path(i))
+
+
 func has_save() -> bool:
-	return FileAccess.file_exists(_path(SAVE_PATH))
+	for i in SLOTS:
+		if has_slot(i):
+			return true
+	return false
+
+
+func latest_slot() -> int:
+	## The slot saved most recently, or -1 when there are none.
+	var best_i := -1
+	var best_t := -1.0
+	for i in SLOTS:
+		var info := slot_info(i)
+		if not info.is_empty() and float(info.saved) > best_t:
+			best_t = float(info.saved)
+			best_i = i
+	return best_i
+
+
+func first_free_slot() -> int:
+	for i in SLOTS:
+		if not has_slot(i):
+			return i
+	return -1
 
 
 func save_run() -> void:
@@ -188,13 +241,19 @@ func save_run() -> void:
 	_add_play_time()
 	save_profile()
 	if _can_write() and not run.is_empty():
-		_write_json(_path(SAVE_PATH), run)
+		run.saved = int(Time.get_unix_time_from_system())
+		_write_json(slot_path(slot), run)
 
 
-func load_run() -> bool:
-	var d = _read_json(_path(SAVE_PATH))
+func load_run(i: int = -1) -> bool:
+	if i < 0:
+		i = latest_slot()
+	if i < 0:
+		return false
+	var d = _read_json(slot_path(i))
 	if not d is Dictionary:
 		return false
+	slot = i
 	new_run()
 	profile.runs = maxi(0, int(profile.runs) - 1)
 	for k in d:
@@ -208,19 +267,50 @@ func load_run() -> bool:
 	return true
 
 
-func clear_save() -> void:
-	var p := _path(SAVE_PATH)
+func clear_save(i: int = -1) -> void:
+	var p := slot_path(slot if i < 0 else i)
 	if FileAccess.file_exists(p):
 		DirAccess.remove_absolute(p)
 
 
-func save_summary() -> String:
-	## One line for the Continue option: where you are and when.
-	var d = _read_json(_path(SAVE_PATH))
+func clear_saves() -> void:
+	for i in SLOTS:
+		clear_save(i)
+	var old := _path(OLD_SAVE_PATH)
+	if FileAccess.file_exists(old):
+		DirAccess.remove_absolute(old)
+
+
+func slot_info(i: int) -> Dictionary:
+	## What a slot holds, for the slot lists: {} when it's empty.
+	var d = _read_json(slot_path(i))
 	if not d is Dictionary:
-		return ""
+		return {}
 	var s := Data.scene(str(d.get("scene", "P1")))
-	return "%s: %s" % [s.act.split(":")[0], s.title]
+	var saved := float(d.get("saved", FileAccess.get_modified_time(slot_path(i))))
+	return {"scene": s.id, "act": s.act, "title": s.title, "place": s.place, "time": float(d.get("time", 0.0)), "saved": saved}
+
+
+func save_summary(i: int = -1) -> String:
+	## One line for the Continue option: where you are and when.
+	var info := slot_info(latest_slot() if i < 0 else i)
+	if info.is_empty():
+		return ""
+	return "Slot %d - %s: %s" % [(latest_slot() if i < 0 else i) + 1, info.act.split(":")[0], info.title]
+
+
+static func clock(secs: float) -> String:
+	## Play time as "1h 05m" or "12m".
+	var m := int(secs) / 60
+	return "%dh %02dm" % [m / 60, m % 60] if m >= 60 else "%dm" % m
+
+
+static func date(unix: float) -> String:
+	## A save's date in local time, e.g. "Oct 11 14:02".
+	var bias := int(Time.get_time_zone_from_system().get("bias", 0)) * 60
+	var d := Time.get_datetime_dict_from_unix_time(int(unix) + bias)
+	var months := ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+	return "%s %d %02d:%02d" % [months[int(d.month) - 1], d.day, d.hour, d.minute]
 
 
 func v(name: String) -> int:

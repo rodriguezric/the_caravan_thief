@@ -6,6 +6,8 @@ extends Node
 ##                    CT_EXPLORE steer it. CT_STATE="var=n,flag,..." presets.
 ##   battle:<kind>    a sample battle, screenshots through its animations
 ##   shell            title, endings, settings, records, achievements
+##   slots            save slots: the old single save moving into slot 1,
+##                    Load Game and New Game's slot lists (needs CT_DIR)
 ##   minigame:<kind>  one minigame (real logic, random presses)
 ##   cine:<name>      a backdrop, screenshot
 
@@ -198,6 +200,37 @@ func _run(scenario: String) -> void:
 				await shot("shell_" + scr.get_class() + str(shot_n))
 				shot_n += 1
 				scr.queue_free()
+			get_tree().quit()
+		"slots":
+			# an old single-file save, as written before slots existed
+			for i in Game.SLOTS:
+				Game.clear_save(i)
+			Game.new_run()
+			Game.run.scene = "S2"
+			Game.run.time = 1234.0
+			Game._write_json(Game._path(Game.OLD_SAVE_PATH), Game.run)
+			Game._migrate_old_save()
+			print("slots after migration: ", range(Game.SLOTS).map(func(i): return Game.has_slot(i)),
+				" old file left: ", FileAccess.file_exists(Game._path(Game.OLD_SAVE_PATH)), " summary: ", Game.save_summary())
+			main.fade_rect.color.a = 0.0
+			main.title()
+			await wait(5.0)
+			await shot("slots_title")
+			for a in ["down", "accept"]:
+				await tap(a)
+			await wait(0.4)
+			await shot("slots_load")
+			await tap("cancel")
+			await wait(0.3)
+			for a in ["down", "accept"]:
+				await tap(a)
+			await wait(0.4)
+			await shot("slots_new")
+			await tap("accept")  # the first free slot (2) is preselected
+			await wait(4.0)
+			print("slot picked: ", Game.slot + 1, " slots now: ", range(Game.SLOTS).map(func(i): return Game.has_slot(i)),
+				" latest: ", Game.latest_slot() + 1)
+			print("load slot 1: ", Game.load_run(0), " -> slot ", Game.slot + 1, " scene ", Game.run.scene, " time ", Game.clock(Game.run.time))
 			get_tree().quit()
 		"pause":
 			Game.new_run()

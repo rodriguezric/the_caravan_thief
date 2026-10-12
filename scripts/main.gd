@@ -202,7 +202,7 @@ func title() -> void:
 	t.queue_free()
 	match choice:
 		"continue":
-			if Game.load_run():
+			if Game.load_run(Game.slot):
 				await play_story()
 			title()
 		"new":

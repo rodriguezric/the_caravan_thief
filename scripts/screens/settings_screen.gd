@@ -235,7 +235,7 @@ func _do_action(key: String) -> void:
 		"reset_settings":
 			q = "Reset volume, motion, shake, text and battle speed to their defaults? Your progress is not touched."
 		"clear_progress":
-			q = "Clear progress? This deletes your saved journey, every ending, legacy record, record and achievement. Settings stay."
+			q = "Clear progress? This deletes every saved journey, every ending, legacy record, record and achievement. Settings stay."
 		"clear_all":
 			q = "Clear ALL stored data? Progress, achievements, records AND settings will be deleted."
 	var c: int = await d.ask(q, ["No, keep it", "Yes, delete"], "", {"box": "red_box" if key != "reset_settings" else "box"})

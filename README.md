@@ -48,10 +48,13 @@ a floating stick on the left, A/B/Menu buttons, tap menus directly, tap the pict
 ## Screens
 
 BAYERIAN card -> opening (the blade falling through the ages) -> **Title**:
-Continue / New Game / Endings / Achievements / Records / Settings / Quit.
+Continue / Load Game / New Game / Endings / Achievements / Records / Settings / Quit.
 
-- **Continue** picks up at the start of the last scene reached. The game saves at
-  the start of every scene.
+- **Save slots**: three. The game saves into the current journey's slot at the
+  start of every scene. **Continue** picks up the most recently saved journey;
+  **Load Game** lists the slots (scene, play time, act, place, when saved);
+  **New Game** asks which slot to start in (overwriting one asks first). A save
+  from before slots existed moves into slot 1 on the next launch.
 - **Endings**: the ending gallery (hints for the ones you haven't found), the last
   route's decisive choices and which other endings it could have reached, and the
   **legacy records** the anthology keeps (Rook's fate, his closest bond, the blade's
@@ -188,6 +191,7 @@ CT_TEST=minigame:lockpick CT_DIR=/tmp/ct godot --path .
 CT_TEST=balance CT_AUTOPLAY=win CT_SPEED=6 CT_N=3 CT_DIR=/tmp/ct godot --headless --path .
 # CT_ACT=talk makes the autopilot use ACT > Talk (persuasion routes); CT_SPEED sets autopilot battle speed
 CT_TEST=shell CT_DIR=/tmp/ct CT_OUT=/tmp/ct godot --path .
+CT_TEST=slots CT_DIR=/tmp/ct CT_OUT=/tmp/ct godot --path .   # save slots: old save -> slot 1, slot lists
 CT_TEST=check godot --headless --path .          # parse-check every script
 CT_TEST=icon godot --headless --path .           # regenerate icon.png
 godot --headless --path . -s tools/peek.gd -- /tmp/ct poses   # people|poses|gestures|moods|creatures

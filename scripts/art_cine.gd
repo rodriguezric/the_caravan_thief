@@ -16,6 +16,7 @@ const DAWN := [Color("3c2f4a"), Color("7a5a6e"), Color("c88a6a"), Color("ecc890"
 static func make(name: String, frame: int) -> PixBuf:
 	match name:
 		"title": return title(frame)
+		"title_caravan": return title_caravan()
 		"ink": return ink_card()
 		"saltway": return saltway(frame)
 		"waystation": return waystation()
@@ -143,14 +144,14 @@ static func caravan_silhouette(b: PixBuf, x0: int, base: int, c: Color, n: int) 
 # ----------------------------------------------------------------- scenes --
 
 static func title(frame: int) -> PixBuf:
-	## The Saltway at dusk: mesas, a caravan crossing the horizon, the road.
+	## The Saltway at dusk: mesas, the road. The caravan crossing the horizon
+	## is a separate sprite (title_caravan) the title screen drives along.
 	var b := PixBuf.new(W, H)
 	gradient(b, DUSK_SKY, 0, 118)
 	stars(b, 40, 40, 5, frame)
 	sun(b, 236, 100, 14, Pal.CANDLE.lerp(Pal.LEMON, 0.3))
 	mesa(b, 112, Pal.DUSK.lerp(Pal.INK, 0.35), 3)
 	ridge(b, 120, 4, 0.03, 1.0, Pal.DUSK.lerp(Pal.INK, 0.55))
-	caravan_silhouette(b, 30 + (frame % 4), 118, Pal.INK.lerp(Pal.DUSK, 0.2), 4)
 	ground(b, 128, Pal.DUNE.lerp(Pal.INK, 0.45), Pal.CANDLE.lerp(Pal.DUNE, 0.4))
 	# the road winding toward the viewer
 	for y in range(128, H):
@@ -160,6 +161,14 @@ static func title(frame: int) -> PixBuf:
 		for x in range(int(cx - hw), int(cx + hw)):
 			if Pal.hash2(x, y, 9) > 0.15:
 				b.pset(x, y, Pal.DIRT.lerp(Pal.INK, 0.35 + t * 0.2))
+	return b
+
+
+static func title_caravan() -> PixBuf:
+	## The title's caravan on its own: four wagons and their oxen, 140 x 20,
+	## wheels on the bottom row (the horizon sits at y 118 on the backdrop).
+	var b := PixBuf.new(140, 20)
+	caravan_silhouette(b, 12, 18, Pal.INK.lerp(Pal.DUSK, 0.2), 4)
 	return b
 
 

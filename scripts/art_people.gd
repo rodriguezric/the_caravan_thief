@@ -979,7 +979,6 @@ static func _face(b: PixBuf, s: Dictionary, dir: int, mood: String, hx: float, h
 	var open := flags.has("open")
 	if s.get("hollow", false) and mood == "":
 		mood = "hollow"
-	var narrow: bool = s.get("narrow", false)
 	var brow := Pal.shade(skin).lerp(Pal.INK2, 0.5)
 	# three-quarter: both eyes, the face's centre line turned toward the right
 	var eyes: Array = [ix - 1, ix + 4] if side else [ix - 4, ix + 2]
@@ -1038,15 +1037,9 @@ static func _face(b: PixBuf, s: Dictionary, dir: int, mood: String, hx: float, h
 				b.rect(ex, ey + 1, 2, 1, Pal.INK2.lerp(skin, 0.4))
 				b.pset(ex + outer, ey + 2, iris)
 			_:
-				if narrow:
-					b.rect(ex, ey + 1, 2, 2, Pal.INK)
-					b.pset(ex + outer, ey + 1, Pal.WHITE)
-					b.pset(ex + inner, ey + 2, iris)
-					b.pset(ex + inner, ey, Pal.INK2.lerp(skin, 0.55))
-				else:
-					b.rect(ex, ey, 2, 3, Pal.INK)
-					b.pset(ex, ey, Pal.WHITE)
-					b.pset(ex + 1, ey + 2, iris)
+				b.rect(ex, ey, 2, 3, Pal.INK)
+				b.pset(ex, ey, Pal.WHITE)
+				b.pset(ex + 1, ey + 2, iris)
 		if s.get("glasses", false):
 			b.rect(ex - 1, ey - 1, 4, 1, Pal.INK2)
 	if s.get("scar", false):

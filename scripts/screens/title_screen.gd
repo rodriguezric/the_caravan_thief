@@ -12,6 +12,10 @@ var letters: Array = []
 var menu: Menu
 var walker: Sprite2D
 var walk_x := -60.0
+## The caravan drives slowly along the horizon and wraps round off-screen.
+var caravan: Sprite2D
+var caravan_x := 18.0
+const CARAVAN_SPEED := 3.0
 var save_line: Label
 
 
@@ -20,6 +24,11 @@ func _init() -> void:
 	bg = TextureRect.new()
 	bg.texture = Art.cine("title", 0)
 	add_child(bg)
+	caravan = Sprite2D.new()
+	caravan.centered = false
+	caravan.texture = Art.cine("title_caravan")
+	caravan.position = Vector2(caravan_x, 100)
+	add_child(caravan)
 	drawer = Node2D.new()
 	drawer.draw.connect(_draw_fx)
 	add_child(drawer)
@@ -49,6 +58,10 @@ func _init() -> void:
 func _process(delta: float) -> void:
 	t += delta
 	bg.texture = Art.cine("title", int(t * 2.0) % 4)
+	caravan_x += delta * CARAVAN_SPEED
+	if caravan_x > 320.0:
+		caravan_x = -140.0
+	caravan.position = Vector2(roundf(caravan_x), 100)
 	# Rook walks the road now and then, the crow wheeling above him
 	walk_x += delta * 30.0
 	if walk_x > 700.0:

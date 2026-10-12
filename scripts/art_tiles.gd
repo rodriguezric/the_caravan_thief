@@ -11,6 +11,9 @@ class_name ArtTiles
 const TILE := 16
 const WALLS := "#WD "
 const SOLID := "#WD wc"
+## Ground that frays into its neighbours rather than meeting them at a seam.
+const SOFT := ".:=sgrx"
+const ROAD := 61  # "="
 
 
 static func is_wall(ch: String) -> bool:
@@ -29,19 +32,69 @@ static func ground(rows: Array, theme: String) -> Image:
 		if tx < 0 or ty < 0 or tx >= tw or ty >= th:
 			return " "
 		return (rows[ty] as String)[tx]
+	# the map as character codes, and which codes are soft ground, for the
+	# per-pixel blending below
+	var grid := PackedInt32Array()
+	for ty in th:
+		for tx in tw:
+			grid.append((rows[ty] as String).unicode_at(tx))
+	var soft := PackedByteArray()
+	soft.resize(65536)
+	for i in SOFT.length():
+		soft[SOFT.unicode_at(i)] = 1
+	# how much track surrounds each tile; interpolated, it bridges road tiles
+	# that only touch at a corner so a diagonal track stays one band
+	var road := []
+	for ty in th:
+		var r := PackedFloat32Array()
+		for tx in tw:
+			var sum := 0.0
+			for k in 9:
+				if at.call(tx + k % 3 - 1, ty + k / 3 - 1) == "=":
+					sum += 2.0 if k == 4 else 1.0
+			r.append(sum / 10.0)
+		road.append(r)
+	var road_at := func(fx: float, fy: float) -> float:
+		var x0 := clampi(floori(fx), 0, tw - 1)
+		var y0 := clampi(floori(fy), 0, th - 1)
+		var x1 := mini(x0 + 1, tw - 1)
+		var y1 := mini(y0 + 1, th - 1)
+		var ax := clampf(fx - floorf(fx), 0.0, 1.0)
+		var ay := clampf(fy - floorf(fy), 0.0, 1.0)
+		var top := lerpf(road[y0][x0], road[y0][x1], ax)
+		var bot := lerpf(road[y1][x0], road[y1][x1], ax)
+		return lerpf(top, bot, ay)
 	for ty in th:
 		for tx in tw:
 			var ch: String = at.call(tx, ty)
 			var below: String = at.call(tx, ty + 1)
 			var below2: String = at.call(tx, ty + 2)
+			# only tiles bordering different soft ground (or near a track) blend
+			var mixed := false
+			var near_road := false
+			if SOFT.contains(ch):
+				for k in 9:
+					var nc: String = at.call(tx + k % 3 - 1, ty + k / 3 - 1)
+					if nc != ch and SOFT.contains(nc):
+						mixed = true
+						near_road = near_road or nc == "=" or ch == "="
 			var mode := "floor"
+			var vote: Array[Vector3i] = []
+			vote.resize(TILE / 2)
+			# a window or door marked on either row of a two-tile face spans both
+			var feat := ch
 			if ch == " ":
 				mode = "void"
 			elif is_wall(ch):
 				if not is_wall(below):
 					mode = "face_low"
+					var above: String = at.call(tx, ty - 1)
+					if not "WD".contains(ch) and "WD".contains(above):
+						feat = above
 				elif not is_wall(below2) and below != " ":
 					mode = "face_high"
+					if not "WD".contains(ch) and "WD".contains(below):
+						feat = below
 				else:
 					mode = "top"
 			for ly in TILE:
@@ -55,9 +108,66 @@ static func ground(rows: Array, theme: String) -> Image:
 						"top":
 							c = _wall_top(theme, x, y)
 						"face_high", "face_low":
-							c = _wall_face(theme, ch, x, y, lx, ly + (0 if mode == "face_high" else TILE))
+							c = _wall_face(theme, feat, x, y, lx, ly + (0 if mode == "face_high" else TILE))
 						_:
-							c = _floor(theme, ch, x, y, lx, ly, at, tx, ty)
+							# soft ground blends across tile corners (so a staircase of
+							# road tiles reads as one diagonal band) and frays along a
+							# ragged, dithered edge instead of stopping at the tile seam
+							# (the vote runs once per 2x2 block, reused for the odd row)
+							if mixed and lx % 2 == 0 and ly % 2 == 0:
+								var gx := tx
+								var gy := ty
+								var edge := false
+								var gc_road := false
+								var wx := x + Pal.noise(x * 2.3, y * 2.3, 7.0) * 3.5 + (Pal.hash2(x, y, 31) - 0.5) * 3.0
+								var wy := y + Pal.noise(y * 2.1, x * 2.1, 3.0) * 3.5 + (Pal.hash2(x, y, 32) - 0.5) * 3.0
+								var fx := wx / TILE - 0.5
+								var fy := wy / TILE - 0.5
+								var x0 := floori(fx)
+								var y0 := floori(fy)
+								var ax := fx - x0
+								var ay := fy - y0
+								# bilinear vote among the four nearest tile centres
+								var cs := PackedInt32Array([0, 0, 0, 0])
+								var ws := PackedFloat32Array([0.0, 0.0, 0.0, 0.0])
+								var total := 0.0
+								for k in 4:
+									var cx := x0 + k % 2
+									var cy := y0 + k / 2
+									if cx < 0 or cy < 0 or cx >= tw or cy >= th:
+										continue
+									var cc := grid[cy * tw + cx]
+									if soft[cc] == 0:
+										continue
+									var wgt := (ax if k % 2 == 1 else 1.0 - ax) * (ay if k / 2 == 1 else 1.0 - ay)
+									total += wgt
+									for j in 4:
+										if cs[j] == cc or cs[j] == 0:
+											cs[j] = cc
+											ws[j] += wgt
+											break
+								var bi := 0
+								for j in range(1, 4):
+									if ws[j] > ws[bi]:
+										bi = j
+								if cs[bi] != 0 and cs[bi] != grid[ty * tw + tx]:
+									for k in 4:
+										var cx := x0 + k % 2
+										var cy := y0 + k / 2
+										if cx >= 0 and cy >= 0 and cx < tw and cy < th and grid[cy * tw + cx] == cs[bi]:
+											gx = cx
+											gy = cy
+											break
+								edge = total > 0.0 and ws[bi] / total < 0.6
+								if near_road and cs[bi] != ROAD and road_at.call(fx, fy) > 0.32:
+									gc_road = true
+								vote[lx / 2] = Vector3i(gx, gy, (1 if edge else 0) | (2 if gc_road else 0))
+							var v := vote[lx / 2] if mixed else Vector3i(tx, ty, 0)
+							var gc: String = "=" if v.z & 2 else at.call(v.x, v.y)
+							c = _floor(theme, gc, x, y, lx, ly, at, v.x, v.y)
+							if v.z & 1 and gc == "=":
+								# the track's worn shoulder
+								c = c.lerp(Pal.DIRT.lerp(Pal.INK, 0.2), 0.3)
 					img.set_pixel(x, y, c)
 	# soft contact shadow under every wall face, and a dark lip where ground meets the chasm
 	for ty in th:
@@ -222,14 +332,24 @@ static func _window(theme: String, x: int, y: int, lx: int, fy: int, wall: Color
 
 
 static func _door(theme: String, lx: int, fy: int, wall: Color) -> Color:
-	if lx < 2 or lx > 13 or fy < 6:
+	if lx < 2 or lx > 13 or fy < 3:
 		return wall
 	var c := Pal.WOOD.lerp(Pal.CLAY, 0.15)
 	if theme in ["ruin", "tomb"]:
-		# an open arch, dark beyond
-		if lx == 2 or lx == 13 or fy == 6:
+		# an open round-topped arch with a lit keystone ring, dark beyond
+		var dx := absf(lx - 7.5)
+		var top := 4 + int(roundf(pow(maxf(0.0, dx - 1.5), 2.0) / 3.0))
+		if fy < top - 2:
+			return wall
+		if fy < top:
+			return Pal.hi(wall) if fy == top - 2 else Pal.shade(wall)
+		if lx == 2 or lx == 13:
 			return Pal.shade(wall)
+		if fy == top or lx == 3 or lx == 12:
+			return Pal.INK2.lerp(Pal.SLATE, 0.25)
 		return Pal.INK.lerp(Pal.INK2, 0.3 if fy > 26 else 0.0)
+	if fy < 6:
+		return wall
 	if lx == 2 or lx == 13 or fy == 6:
 		return Pal.deep(c)
 	if lx == 11 and fy == 19:
@@ -260,14 +380,22 @@ static func _floor(theme: String, ch: String, x: int, y: int, lx: int, ly: int, 
 			if hs > 0.99:
 				c = Pal.SCRUB
 		"=":
-			# a wheel-rutted dirt track
-			c = Pal.DIRT.lerp(Pal.SAND, 0.3 + n * 0.15)
-			var ru := ly % 16
-			if ru == 4 or ru == 11:
+			# a worn dirt track: trodden patches, wheel scuffs and grit, no
+			# tile-aligned ruts so it can bend and run diagonally
+			c = Pal.DIRT.lerp(Pal.SAND, 0.32 + n * 0.12)
+			var wear := Pal.noise(x * 0.7, y * 1.4, 11.0)
+			if wear > 0.45:
+				c = Pal.DIRT.lerp(Pal.SAND, 0.18)
+			elif wear < -0.5:
+				c = Pal.DIRT.lerp(Pal.DUST, 0.45)
+			var cell := Vector2i(x / 6, y / 4)
+			var hc := Pal.hash2(cell.x, cell.y, 41)
+			if hc > 0.72 and y % 4 == 1 and x % 6 < 2 + int(hc * 4.0) % 3:
 				c = Pal.shade(Pal.DIRT)
-			if hs > 0.96:
-				c = Pal.DIRT.lerp(Pal.STONE, 0.4)
-			c = _blend_edge(c, ch, at, tx, ty, lx, ly, Pal.SAND.lerp(Pal.DIRT, 0.3))
+			if hs > 0.965:
+				c = Pal.DIRT.lerp(Pal.STONE, 0.45)
+			elif hs < 0.02:
+				c = Pal.hi(Pal.DIRT.lerp(Pal.SAND, 0.4))
 		"s":
 			c = Pal.SAND.lerp(Pal.DUNE, 0.2 + n * 0.25)
 			if (y + int(sin(x * 0.2) * 3.0)) % 9 == 0:
@@ -281,17 +409,36 @@ static func _floor(theme: String, ch: String, x: int, y: int, lx: int, ly: int, 
 			elif hs < 0.04:
 				c = Pal.SCRUB.lerp(Pal.LEMON, 0.3)
 		"r":
-			c = Pal.DUST.lerp(Pal.SAND, 0.4 + n * 0.2)
-			if Pal.hash2(x / 3, y / 3, 6) > 0.86:
-				c = Pal.STONE.lerp(Pal.DUST, 0.3)
-				if Pal.hash2(x / 3, y / 3 + 1, 6) <= 0.86:
-					c = Pal.shade(c)
+			# stony ground: dust strewn with pebbles that catch the light
+			c = Pal.DUST.lerp(Pal.SAND, 0.45 + n * 0.18)
+			if Pal.noise(x * 0.9, y * 0.9, 5.0) > 0.55:
+				c = Pal.DUST.lerp(Pal.SAND, 0.3)
+			c = _pebbles(c, x, y, 5, 0.55, Pal.STONE.lerp(Pal.DUST, 0.35))
 		"x":
-			c = Pal.STONE.lerp(Pal.DUST, 0.4 + n * 0.2)
-			if Pal.hash2(x / 4, y / 3, 12) > 0.75:
-				c = Pal.STONE.lerp(Pal.SAND, 0.2)
-				if ly % 3 == 2:
-					c = Pal.shade(c)
+			# rubble: broken paving slabs, tilted and cracked, sand in the gaps
+			c = Pal.DUST.lerp(Pal.SAND, 0.35 + n * 0.15)
+			var row := y / 5
+			var o := (row * 4) % 7
+			var cx := (x + o) / 7
+			var hc := Pal.hash2(cx, row, 12)
+			var px := (x + o) % 7
+			var py := y % 5
+			var cut_l := int(Pal.hash2(cx, row, 13) * 2.0)
+			var cut_r := 5 - int(Pal.hash2(cx, row, 14) * 2.0)
+			var cut_b := 3 + int(Pal.hash2(cx, row, 15) * 2.0)
+			if hc > 0.38 and px >= cut_l and px <= cut_r and py <= cut_b:
+				var stone := Pal.STONE.lerp(Pal.SAND, 0.15 + Pal.hash2(cx, row, 16) * 0.25)
+				c = stone
+				if py == 0:
+					c = Pal.hi(stone)
+				elif py == cut_b or px == cut_r:
+					c = Pal.shade(stone)
+				if hc > 0.9 and px == 1 + py % 3:
+					c = Pal.shade(stone)
+			elif hc > 0.38 and py == cut_b + 1 and px >= cut_l and px <= cut_r:
+				c = Pal.shade(c)
+			else:
+				c = _pebbles(c, x, y, 4, 0.7, Pal.STONE.lerp(Pal.DUST, 0.25))
 		"b":
 			# bridge planks across the gorge, gaps between them
 			var plank := Pal.WOOD.lerp(Pal.DUST, 0.25)
@@ -322,13 +469,24 @@ static func _floor(theme: String, ch: String, x: int, y: int, lx: int, ly: int, 
 	return c
 
 
-static func _blend_edge(c: Color, ch: String, at: Callable, tx: int, ty: int, lx: int, ly: int, edge: Color) -> Color:
-	## Ragged edges where a track meets other ground.
-	var j := int(Pal.hash2(tx * 16 + lx, ty * 16 + ly, 21) * 3.0)
-	if at.call(tx - 1, ty) != ch and lx < j or at.call(tx + 1, ty) != ch and lx > 15 - j:
-		return edge
-	if at.call(tx, ty - 1) != ch and ly < j or at.call(tx, ty + 1) != ch and ly > 15 - j:
-		return edge
+static func _pebbles(c: Color, x: int, y: int, size: int, chance: float, stone: Color) -> Color:
+	## A scatter of small stones, one at most per size x size cell, each with a
+	## lit top and a shadow beneath.
+	var cx := x / size
+	var cy := y / size
+	if Pal.hash2(cx, cy, 33) < chance:
+		return c
+	var sx := cx * size + 1 + int(Pal.hash2(cx, cy, 34) * (size - 2))
+	var sy := cy * size + int(Pal.hash2(cx, cy, 35) * (size - 2))
+	var w := 1 + int(Pal.hash2(cx, cy, 36) * 2.0)
+	if x < sx or x >= sx + w:
+		return c
+	if y == sy:
+		return Pal.hi(stone)
+	if y == sy + 1:
+		return stone if w > 1 and Pal.hash2(cx, cy, 37) > 0.4 else Pal.shade(c)
+	if y == sy + 2 and w > 1:
+		return Pal.shade(c)
 	return c
 
 

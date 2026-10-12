@@ -5,10 +5,10 @@ class_name Data
 const ROOK_SKIN := Color("d2b394")
 
 const CAST := {
-	"rook": {"id": "rook", "name": "Rook", "voice": "rook", "style": "cropped", "narrow": true, "adult": true, "rope": true,
+	"rook": {"id": "rook", "name": "Rook", "voice": "rook", "style": "cropped", "adult": true, "rope": true,
 		"skin": ROOK_SKIN, "hair": Color("33283a"), "eye": Color("d8a040"), "top": Color("c8b08c"), "jacket": Color("4a6688"),
 		"patches": true, "coat_long": true, "bottom": Color("8c7258"), "shoes": Color("4a3428"), "belt": true, "weapon": "dagger"},
-	"rook_sword": {"id": "rook", "variant": "sword", "name": "Rook", "voice": "rook", "style": "cropped", "narrow": true, "adult": true, "rope": true,
+	"rook_sword": {"id": "rook", "variant": "sword", "name": "Rook", "voice": "rook", "style": "cropped", "adult": true, "rope": true,
 		"skin": ROOK_SKIN, "hair": Color("33283a"), "eye": Color("d8a040"), "top": Color("c8b08c"), "jacket": Color("4a6688"),
 		"patches": true, "coat_long": true, "bottom": Color("8c7258"), "shoes": Color("4a3428"), "belt": true, "weapon": "sword", "sheath": true},
 	"mara": {"id": "mara", "name": "Mara", "voice": "mara", "style": "braid", "adult": true, "broad": true, "quiver": true,

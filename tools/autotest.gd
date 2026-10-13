@@ -3,7 +3,7 @@ extends Node
 ## saves to CT_DIR (never the player's own files).
 ##   story            play from CT_SCENE (default P1) to an ending with
 ##                    CT_AUTOPLAY on; CT_CHOICES / CT_ACT / CT_SWORD /
-##                    CT_EXPLORE steer it. CT_STATE="var=n,flag,..." presets.
+##                    CT_EXPLORE steer it. CT_STATE="var=n,flag,!flag,..." presets (!flag clears).
 ##   battle:<kind>    a sample battle, screenshots through its animations
 ##   shell            title, endings, settings, records, achievements
 ##   slots            save slots: the old single save moving into slot 1,
@@ -80,6 +80,8 @@ func _preset() -> void:
 				Game.run.vars[p[0]] = int(p[1])
 			else:
 				Game.set_flag(p[0], p[1])
+		elif kv.begins_with("!"):
+			Game.run.flags.erase(kv.substr(1))
 		else:
 			Game.set_flag(kv)
 

@@ -483,31 +483,35 @@ func _player_turn(u: BattleUnit) -> Dictionary:
 		_highlight(u, false)
 		return r
 	while true:
-		var is_rook := u.id == "rook"
-		var opts := [{"text": "ATTACK"}, {"text": "SKILL", "enabled": not u.data.get("skills", []).is_empty()},
-			{"text": "SWORD", "enabled": is_rook and Game.flag("has_sword") and not u.has("sealed")},
-			{"text": "ITEM", "enabled": _supply_list().size() > 0}, {"text": "GUARD"}, {"text": "ACT", "enabled": not _act_list(u).is_empty()}]
+		# SWORD is listed only for whoever carries the blade
+		var bearer := u.id == "rook" and Game.flag("has_sword")
+		var keys := ["attack", "skill", "sword", "item", "guard", "act"] if bearer else ["attack", "skill", "item", "guard", "act"]
+		var all_opts := {"attack": {"text": "ATTACK"}, "skill": {"text": "SKILL", "enabled": not u.data.get("skills", []).is_empty()},
+			"sword": {"text": "SWORD", "enabled": not u.has("sealed")},
+			"item": {"text": "ITEM", "enabled": _supply_list().size() > 0}, "guard": {"text": "GUARD"}, "act": {"text": "ACT", "enabled": not _act_list(u).is_empty()}}
+		var helps := {"attack": "Strike with your weapon.", "skill": "Use a technique (costs TP).", "sword": "Call on the blade. Free, strong, and it raises Suspicion." if not u.has("sealed") else "SEALED. The blade will not answer.",
+			"item": "Use something from your pack.", "guard": "Brace. Take less damage and recover 2 TP.", "act": "Steal, talk, run, or do what this fight needs."}
+		var opts := keys.map(func(k: String) -> Dictionary: return all_opts[k])
 		cmd_menu = Menu.make(ui_root, opts, Vector2(4, 138), Vector2(100, 37), 2)
 		cmd_menu.cancellable = false
 		_pop_in(cmd_menu)
 		cmd_menu.moved.connect(func(i: int) -> void:
-			help_l.text = ["Strike with your weapon.", "Use a technique (costs TP).", "Call on the blade. Free, strong, and it raises Suspicion." if not u.has("sealed") else "SEALED. The blade will not answer.",
-				"Use something from your pack.", "Brace. Take less damage and recover 2 TP.", "Steal, talk, run, or do what this fight needs."][i])
+			help_l.text = helps[keys[i]])
 		var c := await cmd_menu.ask()
 		cmd_menu.queue_free()
 		var plan := {}
-		match c:
-			0:
+		match keys[c] if c >= 0 else "":
+			"attack":
 				var tgt := await choose_target(_targets_for(u, "enemy"))
 				if tgt != null:
 					plan = {"cmd": "attack", "target": tgt}
-			1:
+			"skill":
 				var sk := await _sub_menu(u, "skills")
 				if not sk.is_empty():
 					var tgt := await _pick_for(u, sk)
 					if tgt != null or sk.target in ["all", "party", "self"]:
 						plan = {"cmd": "skill", "skill": sk, "target": tgt}
-			2:
+			"sword":
 				var sk := await _sub_menu(u, "sword")
 				if not sk.is_empty():
 					if sk.id == "foreknow":
@@ -516,7 +520,7 @@ func _player_turn(u: BattleUnit) -> Dictionary:
 					var tgt := await _pick_for(u, sk)
 					if tgt != null or sk.target in ["all", "party", "self"]:
 						plan = {"cmd": "skill", "skill": sk, "target": tgt}
-			3:
+			"item":
 				var it := await _sub_menu(u, "items")
 				if not it.is_empty():
 					var tgt: BattleUnit = null
@@ -526,9 +530,9 @@ func _player_turn(u: BattleUnit) -> Dictionary:
 						tgt = await choose_target(living(enemies))
 					if tgt != null or it.target == "party":
 						plan = {"cmd": "item", "item": it, "target": tgt}
-			4:
+			"guard":
 				plan = {"cmd": "guard"}
-			5:
+			"act":
 				var a := await _sub_menu(u, "act")
 				if not a.is_empty():
 					var tgt: BattleUnit = null

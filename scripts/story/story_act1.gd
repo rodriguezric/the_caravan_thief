@@ -394,14 +394,73 @@ func _s1_help() -> void:
 	await s.say("ysa", "Thank you, traveller. Tam, say thank you.", "smile")
 	s.a("tam").hop(4.0)
 	await s.say("pilgrim_kid", "Thank you, sailor!", "grin")
-	# walking past the Factor on the way back
-	await s.walk("player", [Vector2i(20, 9), Vector2i(25, 9)], 50.0)
+	await _s1_help_factor()
+
+
+func _s1_help_factor() -> void:
+	## Walking back past the cream wagon, the Factor stops him. Rook doesn't
+	## have the blade yet; the Factor talks to him as if he already might.
+	var r := s.a("player")
+	var f := s.a("factor")
+	await s.walk("player", [Vector2i(20, 9), Vector2i(24, 9)], 50.0)
 	s.face_to("factor", "player")
 	await s.say("factor", "You have careful hands.", "")
+	r.set_mood("shock")
+	s.face_to("player", "factor")
+	await s.wait(0.3)
+	r.set_mood("")
+	r.gesture("cross", 1.2)
+	await s.say("rook", "Wheelwright's hands.", "smirk")
+	await s.walk("factor", [Vector2i(26, 9)], 22.0)
+	s.face_to("factor", "player")
+	await s.say("factor", "A wheelwright's hands are calloused across the palm. Yours are burned at the wrists. Rope, I think. Pulled tight, a long time ago.", "")
+	r.emote("sweat")
+	await s.think("Two people in one afternoon. He's going to start wearing gloves. He's going to start wearing a sack.")
+	await s.narrate("The Factor draws a folded cloth from his sleeve, cream like his robes, and holds it out. It smells of nothing at all.")
+	f.gesture("reach", 1.6)
+	await s.say("factor", "For the hands. The salt gets into old burns.", "smile")
+	var c := await s.choose("The cloth hangs between them. The Factor waits as if he has never once been in a hurry.", [
+		"Take it. Say thank you.", "Keep your hands to yourself.", "Ask him what's in the cream wagon."])
+	match c:
+		0:
+			Game.set_flag("factor_cloth")
+			r.gesture("reach", 0.8)
+			s.sfx("paper", 1.4, -12.0)
+			await s.say("rook", "...Thanks.", "")
+			await s.say("factor", "Manners. They're rarer on this road than water.", "smile")
+			await s.think("It's the softest thing he has ever held. He wants to give it back. He wants to keep it. Both at once. That's never a good sign.")
+		1:
+			r.shake_head()
+			await s.say("rook", "I'm fine. Salt's good for you. Keeps things.", "grin")
+			f.nod(1)
+			await s.say("factor", "It does. Fish. Meat. Grudges.", "smile")
+			await s.narrate("He folds the cloth away, corner to corner, exactly as it was.")
+			await s.say("factor", "Keeping things is my trade too, as it happens.", "")
+		_:
+			await s.say("rook", "So. The cream wagon. What's a man like you guarding out here with no guards?", "sly")
+			s.sfx("heartbeat", 0.8, -10.0)
+			f.face(2)
+			await s.wait(0.6)
+			s.face_to("factor", "player")
+			await s.say("factor", "Something that was lost once, and is kept now.", "")
+			await s.say("factor", "Kept things are not lost, you understand. Not even when they wander off. They only take the long way home.", "smile")
+			await s.think("That wasn't an answer. That was a door with a painted handle.")
+	# he looks past Rook, up at the ridge he came down from
+	f.face(1)
+	await s.wait(0.5)
+	s.face_to("factor", "player")
+	await s.say("factor", "You came down off that ridge. Most people who watch from ridges stay up there. Or come down after dark.", "")
+	r.gesture("shrug", 1.0)
+	await s.say("rook", "I'm a morning person.", "grin")
+	await s.say("factor", "Then I hope I see you in the morning.", "smile")
+	s.sfx("heartbeat", 1.0, -8.0)
+	await s.wait(0.4)
+	f.gesture("bow", 1.4)
+	await s.say("factor", "Good afternoon.", "smile")
+	await s.walk("player", [Vector2i(21, 9)], 46.0)
 	s.face_to("player", "factor")
 	r.emote("...")
-	await s.think("He wasn't looking at my hands. He was looking at my face the whole time.")
-	await s.say("factor", "Good afternoon.", "smile")
+	await s.think("He hasn't moved. He wasn't looking at my hands. He was looking at my face the whole time.")
 
 
 func _jackal_battle() -> Dictionary:

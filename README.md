@@ -192,7 +192,7 @@ All runs write saves to `CT_DIR`, never to your real saves.
 # play the whole story by itself, screenshots every 2 s
 CT_TEST=story CT_AUTOPLAY=win CT_DIR=/tmp/ct CT_OUT=/tmp/ct CT_SHOT_EVERY=2 CT_EXPLORE=1 godot --path .
 # steer it: CT_CHOICES=0,2,1 (choice indices in order), CT_SCENE=S6 (start there),
-# CT_STATE="loyalty=7,confessed" (preset variables/flags), CT_SWORD=1 (use the blade's arts)
+# CT_STATE="loyalty=7,confessed,!has_sword" (preset variables/flags; !flag clears), CT_SWORD=1 (use the blade's arts)
 CT_TEST=battle:hunters CT_AUTOPLAY=win CT_SWORD=1 CT_OUT=/tmp/ct CT_SHOT_EVERY=0.25 godot --path .
 CT_TEST=minigame:lockpick CT_DIR=/tmp/ct godot --path .
 # balance: each key story fight N times with a sensible autopilot (heals, uses techniques)

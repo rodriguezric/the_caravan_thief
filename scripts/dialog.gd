@@ -25,7 +25,16 @@ var _talking := false
 var _anim_t := 0.0
 var _anim_portrait := ""
 var _box_tween: Tween
+var _portrait_tween: Tween
+## True while putting up the first line of a conversation (the box just opened).
+var _fresh := false
 var _open := false
+## Bumped whenever a line goes up; a pending close checks it hasn't changed.
+var _close_id := 0
+## How long the box lingers after a line before closing. A line that follows
+## within this time reuses the open box and portrait instead of replaying
+## their entrance, so a conversation opens once rather than on every line.
+const CLOSE_GRACE := 0.2
 var skip_all := false
 ## The last lines shown, oldest first: [speaker, text].
 var backlog: Array = []
@@ -102,6 +111,7 @@ func _pressed(action: String) -> bool:
 
 func _open_box(kind: String) -> void:
 	box.texture = Art.ui(kind)
+	_fresh = not _open
 	if _open:
 		return
 	_open = true
@@ -114,6 +124,7 @@ func _open_box(kind: String) -> void:
 
 
 func close() -> void:
+	_close_id += 1
 	_open = false
 	visible = false
 	pframe.visible = false
@@ -121,8 +132,19 @@ func close() -> void:
 	name_box.visible = false
 
 
+func _close_soon() -> void:
+	## Close unless another line arrives first.
+	_close_id += 1
+	var id := _close_id
+	arrow.visible = false
+	await get_tree().create_timer(CLOSE_GRACE).timeout
+	if id == _close_id and _open:
+		close()
+
+
 func _set_portrait(opts: Dictionary) -> void:
 	var p = opts.get("portrait", null)
+	var mood_changed := false
 	if p == null:
 		pframe.visible = false
 		_portrait_key = ""
@@ -141,6 +163,7 @@ func _set_portrait(opts: Dictionary) -> void:
 	else:
 		_anim_portrait = ""
 		var mood: String = opts.get("mood", "")
+		mood_changed = mood != _face_mood
 		pic.texture = Art.portrait(p, mood)
 		pic.position = Vector2(3, 3)
 		_face_spec = p
@@ -150,23 +173,40 @@ func _set_portrait(opts: Dictionary) -> void:
 		key = "%s:%s" % [p.get("id", ""), p.get("variant", "")]
 	var x := 8.0 if side == "left" else 234.0
 	var changed := key != _portrait_key or side != _portrait_side or not pframe.visible
+	# mid-conversation, speakers swap in gently; only the first face of a
+	# conversation gets the full slide-in
+	var swap := not _fresh
 	_portrait_key = key
 	_portrait_side = side
 	pframe.visible = true
+	if _portrait_tween:
+		_portrait_tween.kill()
+	pframe.scale = Vector2.ONE
+	if not changed:
+		pframe.position = Vector2(x, 40)
+		pframe.modulate.a = 1.0
 	if changed and Game.reduced_motion():
 		pframe.position = Vector2(x, 40)
 		pframe.modulate.a = 1.0
+	elif changed and swap:
+		# a new speaker mid-conversation: a quick, small cross-fade, no bounce
+		pframe.position = Vector2(x + (-6 if side == "left" else 6), 40)
+		pframe.modulate.a = 0.3
+		_portrait_tween = create_tween().set_parallel(true)
+		_portrait_tween.tween_property(pframe, "position:x", x, 0.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		_portrait_tween.tween_property(pframe, "modulate:a", 1.0, 0.1)
 	elif changed:
 		pframe.position = Vector2(x + (-30 if side == "left" else 30), 40)
 		pframe.modulate.a = 0.0
-		var t := create_tween().set_parallel(true)
-		t.tween_property(pframe, "position:x", x, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		t.tween_property(pframe, "modulate:a", 1.0, 0.12)
-	else:
-		# mood swap: a little squash
+		_portrait_tween = create_tween().set_parallel(true)
+		_portrait_tween.tween_property(pframe, "position:x", x, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_portrait_tween.tween_property(pframe, "modulate:a", 1.0, 0.12)
+	elif mood_changed:
+		# same speaker, new expression: a little squash
 		pframe.scale = Vector2(1.06, 0.94)
 		pframe.pivot_offset = pframe.size / 2.0
-		create_tween().tween_property(pframe, "scale", Vector2.ONE, 0.12)
+		_portrait_tween = create_tween()
+		_portrait_tween.tween_property(pframe, "scale", Vector2.ONE, 0.12)
 	name_box.position.x = 10.0 if side == "left" else 310.0 - name_box.size.x
 
 
@@ -192,6 +232,7 @@ func paginate(line: String) -> Array:
 
 
 func _prepare(speaker: String, opts: Dictionary) -> void:
+	_close_id += 1
 	_open_box(opts.get("box", "box"))
 	_set_portrait(opts)
 	name_box.visible = speaker != ""
@@ -237,7 +278,7 @@ func say(lines: Array, speaker: String = "", opts: Dictionary = {}) -> void:
 		Sfx.play("blip", 1.3, -10.0)
 		arrow.visible = false
 	if not opts.get("keep", false):
-		close()
+		_close_soon()
 
 
 func _type(line: String, voice: String, auto: bool, instant: bool = false) -> void:
@@ -294,16 +335,8 @@ func _set_actor_talking(on: bool) -> void:
 
 
 func ask(question: String, options: Array, speaker: String = "", opts: Dictionary = {}) -> int:
-	_open_box(opts.get("box", "box"))
-	_set_portrait(opts)
-	name_box.visible = speaker != ""
-	name_label.text = speaker
-	name_box.size.x = Art.text_width(speaker) + 12
-	if pframe.visible:
-		name_box.position.x = 10.0 if _portrait_side == "left" else 310.0 - name_box.size.x
-	else:
-		name_box.position = Vector2(10, 116)
-	text.add_theme_color_override("font_color", opts.get("color", Pal.TEXT if speaker != "" else Pal.CREAM))
+	# _prepare also cancels the previous line's pending close
+	_prepare(speaker, opts)
 	# wrap the question like any other line; earlier pages wait for a press,
 	# the last page stays up under the choices
 	var pages := paginate(question)
@@ -339,5 +372,5 @@ func ask(question: String, options: Array, speaker: String = "", opts: Dictionar
 		r = await m.ask()
 	m.queue_free()
 	if not opts.get("keep", false):
-		close()
+		_close_soon()
 	return r

@@ -115,6 +115,14 @@ static func make(name: String) -> PixBuf:
 		return touch(name.substr(2))
 	if name.begins_with("emote_"):
 		return _emote(name.substr(6))
+	if name.begins_with("item_"):
+		return item_icon(name.substr(5))
+	if name.begins_with("skill_"):
+		return skill_icon(name.substr(6))
+	if name.begins_with("weapon_"):
+		return skill_icon(name)
+	if name.begins_with("stat_"):
+		return stat_icon(name.substr(5))
 	return PixBuf.new(1, 1)
 
 
@@ -371,5 +379,604 @@ static func number(n: String, c: Color, big: bool = false) -> PixBuf:
 				if g[y][xx] == "#":
 					b.rect((x + xx) * k, (y + 1) * k - (k - 1), k, k, Pal.hi(c) if y < 2 else c)
 		x += (g[0] as String).length() + 1
+	b.outline()
+	return b
+
+
+# ------------------------------------------------------------------ icons --
+# 14 x 14, a 12 x 12 drawing with one outline pass round it: every carried
+# thing and supply (Art.ui("item_<id>")), every skill and blade art
+# (Art.ui("skill_<id>")) and every crew weapon (Art.ui("weapon_<kind>")).
+
+static func icon_pal() -> Dictionary:
+	## The letters the icons are drawn with.
+	return {"I": Pal.INK2, "W": Pal.WHITE, "C": Pal.CREAM, "Y": Pal.LEMON, "O": Pal.ORANGE, "H": Pal.HONEY,
+		"S": Pal.STEEL, "s": Pal.STEEL.lerp(Pal.WHITE, 0.5), "D": Pal.WOOD, "B": Pal.BARK, "R": Pal.RED, "r": Pal.ROSE,
+		"b": Pal.BLOOD, "G": Pal.GLOW, "M": Pal.MINT, "g": Pal.SAGE, "N": Pal.NAVY, "U": Pal.BLUE, "K": Pal.LEATHER,
+		"A": Pal.STONE, "X": Pal.SLATE, "P": Pal.CANVAS, "p": Pal.DUST, "Z": Pal.BRASS, "z": Pal.BRASS.lerp(Pal.INK, 0.35),
+		"V": Pal.OMEN, "v": Pal.PURPLE, "L": Pal.LILAC, "F": Pal.FROST, "E": Pal.SAND, "e": Pal.DUNE, "k": Pal.SKY,
+		"Q": Pal.CLAY, "c": Pal.CANDLE, "q": Pal.PLUM, "n": Pal.SKIN}
+
+
+const _UNKNOWN := ["............", "...CCCCC....", "..CC...CC...", "......CC....", ".....CC.....", ".....CC.....",
+	"............", ".....CC....."]
+
+
+static func item_icon(id: String) -> PixBuf:
+	var rows: Array
+	match id:
+		# --- what Rook carries off -------------------------------------------
+		"purse":
+			rows = ["....KK.KK...",
+					".....KKK....",
+					"....ZKKKZ...",
+					"...KKKKKKK..",
+					"..KKKRRRKKK.",
+					"..KKRKKKRKK.",
+					".KKKKKKKKKKK",
+					".KKKZZZZKKKK",
+					".KKKKKKKKKKK",
+					"..KKKKKKKKK.",
+					"...KKKKKKK..",
+					"............"]
+		"seal_ring":
+			rows = ["............",
+					"...SSSSSS...",
+					"...SFFFFS...",
+					"...SFXXFS...",
+					"...SSSSSS...",
+					"..SS....SS..",
+					".SS......SS.",
+					".S........S.",
+					".SS......SS.",
+					"..SS....SS..",
+					"...SSSSSS...",
+					"............"]
+		"saffron":
+			rows = ["............",
+					"............",
+					"..RRRRRRRR..",
+					".RrrrrrrrrR.",
+					".ZZZZZZZZZZ.",
+					".RRRRZZRRRR.",
+					".RRRRYYRRRR.",
+					".RRRRRRRRRR.",
+					".RRRRRRRRRR.",
+					".rrrrrrrrrr.",
+					"..O..O.O..O.",
+					".O..O....O.."]
+		"silk":
+			rows = ["............",
+					"..vvvvvvvv..",
+					".vLLLLLLLLv.",
+					"vLvvLLLLLLLv",
+					"vvLvvvvvvvvv",
+					"vLvvLLLLLLLv",
+					".vLLLLLLLLv.",
+					"..vvvvvvvvL.",
+					"..........L.",
+					".........L..",
+					"........L...",
+					"............"]
+		"icon":
+			rows = ["....DDDD....",
+					"...DZZZZD...",
+					"..DZYYYYZD..",
+					"..DYYnnYYD..",
+					"..DYnnnnYD..",
+					"..DYYnnYYD..",
+					"..DUUUUUUD..",
+					"..DUUUUUUD..",
+					"..DUUZUUUD..",
+					"..DUUUUUUD..",
+					"..DDDDDDDD..",
+					"............"]
+		"ledger":
+			rows = ["............",
+					".KKKKKKKKK..",
+					".KKKKKKKKKC.",
+					".KKKKKKKKKC.",
+					".KZZZZZZKKC.",
+					".KZqqqqZKKC.",
+					".KZZZZZZKKC.",
+					".KKKKKKKKKC.",
+					".KKKKKKKKZC.",
+					".KKKKKKKKZC.",
+					"..CCCCCCCCC.",
+					"............"]
+		"map":
+			rows = ["............",
+					".PPPPPP.PP..",
+					".PPpPPPPPPP.",
+					".PPPpPPPPPP.",
+					"..PPPpppPPP.",
+					".PPPPPPPpPP.",
+					".PPPPPPPPpP.",
+					".PPPPPPPPIP.",
+					".PPPPPPPPIP.",
+					"..PPP.PPPPP.",
+					"...P....PP..",
+					"............"]
+		"poster":
+			rows = [".....b......",
+					".PPPPPPPPPP.",
+					".PIIIIIIIIP.",
+					".PPPPPPPPPP.",
+					".PPPPnnPPPP.",
+					".PPPnnnnPPP.",
+					".PPPPnnPPPP.",
+					".PPPIIIIPPP.",
+					".PPPPPPPPPP.",
+					".PbbbbbbbbP.",
+					".PPPPPPPPPP.",
+					"............"]
+		"letter":
+			rows = ["............",
+					"............",
+					".CCCCCCCCCC.",
+					".CPCCCCCCPC.",
+					".CCPCCCCPCC.",
+					".CCCPCCPCCC.",
+					".CCCCPRPCCC.",
+					".CCCCRRRCCC.",
+					".CCCCCRCCCC.",
+					".CCCCCCCCCC.",
+					"............",
+					"............"]
+		"payroll":
+			rows = ["...Y.YY.Y...",
+					"..YYYYYYYY..",
+					".ZZZZZZZZZZ.",
+					".DDDDDDDDDD.",
+					".ZZZZZZZZZZ.",
+					".DDDDYYDDDD.",
+					".DDDDzzDDDD.",
+					".DDDDDDDDDD.",
+					".ZDDDDDDDDZ.",
+					".ZZZZZZZZZZ.",
+					"............",
+					"............"]
+		# --- supplies --------------------------------------------------------
+		"bread":
+			rows = ["............",
+					"............",
+					"....HHHH....",
+					"..HHCHHCHH..",
+					".HHCHHCHHCH.",
+					".HHHHHHHHHH.",
+					".DHHHHHHHHD.",
+					".DDHHHHHHDD.",
+					"..DDDDDDDD..",
+					"............",
+					"............",
+					"............"]
+		"salve":
+			rows = ["............",
+					"............",
+					"...KKKKKK...",
+					"...KKKKKK...",
+					"...PPPPPP...",
+					"..FMMMMMMF..",
+					"..FMWMMMMF..",
+					"..FMWMMgMF..",
+					"..FMMMMgMF..",
+					"..FMMMMMMF..",
+					"...FFFFFF...",
+					"............"]
+		"tonic":
+			rows = [".....KK.....",
+					".....FF.....",
+					".....FF.....",
+					"....FFFF....",
+					"...FHHHHF...",
+					"...FWHHHF...",
+					"...FWPPHF...",
+					"...FHPPHF...",
+					"...FHHHHF...",
+					"...FHHHHF...",
+					"....FFFF....",
+					"............"]
+		"smoke":
+			rows = ["...A...A....",
+					"..A.A.A.A...",
+					"...A...A.A..",
+					"....A.A.....",
+					".....A......",
+					"....XXXX....",
+					"...XWXXXX...",
+					"...XXXXXX...",
+					"...XXXXXX...",
+					"....XXXX....",
+					"............",
+					"............"]
+		"sand":
+			rows = ["....KK......",
+					".....KK.....",
+					"....EEEE....",
+					"...EEEEEE...",
+					"..EEeEEEEE..",
+					"..EEEEEeEE..",
+					"..EEEEEEEE..",
+					"...EEEEEE...",
+					"............",
+					".e.E..e..E..",
+					"..E.e..E....",
+					"............"]
+		_:
+			rows = _UNKNOWN
+	var b := PixBuf.new(14, 14)
+	b.ascii(rows, icon_pal(), 1, 1)
+	b.outline()
+	return b
+
+
+static func skill_icon(id: String) -> PixBuf:
+	var rows: Array
+	match id:
+		# --- Rook ------------------------------------------------------------
+		"quickcut":
+			rows = ["........s..s",
+					".......s..s.",
+					"....s.s..s..",
+					"...s.s..s...",
+					"..s.s..s....",
+					".s.s..s.....",
+					"s.s..s......",
+					".s..s.......",
+					"s..s........",
+					"..s.........",
+					".s..........",
+					"............"]
+		"feint":
+			rows = ["...........s",
+					"..........sS",
+					"....L....sS.",
+					"...L....sS..",
+					"..L....sS...",
+					".L..Z.sS....",
+					".L...ZS.....",
+					".L..K.Z.....",
+					"..LK........",
+					"..LL........",
+					"...LLL......",
+					"............"]
+		"grit":
+			rows = [".........E..",
+					"......E.....",
+					"..E.....e.E.",
+					"....e.E.....",
+					".E..EeE..e..",
+					"...EEEEe....",
+					"..eEEEEE.E..",
+					".E.EEEE.....",
+					"..nnnn..e...",
+					".nnnnnn.....",
+					".nnnnn......",
+					"............"]
+		"tumble":
+			rows = ["....kkkk....",
+					"..kk....kk..",
+					".k........k.",
+					".k..........",
+					"k...........",
+					"k........k..",
+					"k.......kkk.",
+					".k.....kkkkk",
+					".k..........",
+					"..kk....kk..",
+					"....kkkk....",
+					"............"]
+		# --- the blade's arts ----------------------------------------------
+		"omen_edge":
+			rows = ["V.........VW",
+					".V.......VsS",
+					"........VsS.",
+					"V.V....VsS..",
+					".......sS...",
+					"..Z...sS....",
+					"...Z.sS.....",
+					"....ZS......",
+					"...K.Z......",
+					"..K...Z.....",
+					".V..........",
+					"............"]
+		"parry_sight":
+			rows = [".SSSSSSSSSS.",
+					".SFFFFFFFFS.",
+					".SFFFFFFFFS.",
+					".SFVVVVVVFS.",
+					".SVvIIIIvVS.",
+					".SVvIWWIvVS.",
+					".SVvIIIIvVS.",
+					"..SVVVVVVS..",
+					"..SFFFFFFS..",
+					"...SFFFFS...",
+					"....SFFS....",
+					".....SS....."]
+		"thousand":
+			rows = ["V....V....V.",
+					".V...V...V..",
+					"..V..V..V...",
+					"...V.V.V....",
+					"....VWV.....",
+					"VVVVWWWVVVVV",
+					"....VWV.....",
+					"...V.V.V....",
+					"..V..V..V...",
+					".V...V...V..",
+					"V....V....V.",
+					"............"]
+		"mine":
+			rows = [".rr.rr......",
+					"rbbrbbr.....",
+					"rbWbbbr.....",
+					".rbbbr......",
+					"..rbr...V...",
+					"...r...VV...",
+					"......VVVVVV",
+					".......VV..V",
+					"........V..V",
+					"...........V",
+					"........VVVV",
+					"............"]
+		"foreknow":
+			rows = ["............",
+					"............",
+					"...VVVVVV...",
+					"..VvvvvvvV..",
+					".VvvIIIIvvV.",
+					"VvvIIWWIIvvV",
+					"VvvIIWIIIvvV",
+					".VvvIIIIvvV.",
+					"..VvvvvvvV..",
+					"...VVVVVV...",
+					"............",
+					"............"]
+		# --- Mara ------------------------------------------------------------
+		"pin":
+			rows = ["..........PP",
+					".........P.P",
+					"........ePP.",
+					".......e....",
+					"......e.....",
+					".....e......",
+					"....e.......",
+					"...e........",
+					"..S.........",
+					".Ss.........",
+					"XXXXXXXX....",
+					"............"]
+		"volley":
+			rows = [".P...P...P..",
+					".e...e...e..",
+					".e...e...e..",
+					".e...e...e..",
+					".e...e...e..",
+					".e...e...e..",
+					"SSS.SSS.SSS.",
+					".S...S...S..",
+					"............",
+					"XXXXXXXXXXX.",
+					"............",
+					"............"]
+		"dressing":
+			rows = ["............",
+					"....WWWW....",
+					"....WGGW....",
+					"....WGGW....",
+					".WWWWGGWWWW.",
+					".WGGGGGGGGW.",
+					".WGGGGGGGGW.",
+					".WWWWGGWWWW.",
+					"....WGGW....",
+					"....WGGW....",
+					"....WWWW....",
+					"............"]
+		"cover":
+			rows = [".SSSSSSSSSS.",
+					".SkkkkkkkkS.",
+					".SkWkkkkkkS.",
+					".SkkkkkkkkS.",
+					".SkkkkkkkkS.",
+					"..SkkkkkkS..",
+					"..SkkkkkkS..",
+					"...SkkkkS...",
+					"....SkkS....",
+					".....SS.....",
+					"............",
+					"............"]
+		# --- Fen -------------------------------------------------------------
+		"caltrops":
+			rows = ["............",
+					"..S......S..",
+					".SsS....SsS.",
+					"..S......S..",
+					".S.S....S.S.",
+					"............",
+					".....S......",
+					"....SsS.....",
+					".....S......",
+					"....S.S.....",
+					"............",
+					"............"]
+		"old_tale":
+			rows = ["............",
+					".CCCCCCCCCC.",
+					"CCCCCCCCCCCC",
+					"CCCCCCCCCCCC",
+					"CCIICIICIICC",
+					"CCCCCCCCCCCC",
+					"CCCCCCCCCCCC",
+					".CCCCCCCCCC.",
+					"...CC.......",
+					"..CC........",
+					".C..........",
+					"............"]
+		"rally":
+			rows = [".Z..........",
+					".DRRRRRRR...",
+					".DRRRRRRRR..",
+					".DRRYRRRRR..",
+					".DRRRRRRR...",
+					".DRRRRRRRR..",
+					".D..........",
+					".D..........",
+					".D..........",
+					".D..........",
+					".D..........",
+					".D.........."]
+		# --- Wick & Bracken --------------------------------------------------
+		"pebbles":
+			rows = ["...AA.......",
+					"..AAA....A..",
+					".........AA.",
+					".AA..AA.....",
+					"AAA.AWAA....",
+					".A...AA..AA.",
+					"........AAA.",
+					"..AA.....A..",
+					".AAAA.......",
+					"..AA...AA...",
+					".......AA...",
+					"............"]
+		"haymaker":
+			rows = ["Y..........Y",
+					".Y........Y.",
+					"....nnnn....",
+					"...nnnnnn...",
+					"..nnBnBnn...",
+					"..nnnnnnn...",
+					"..nnnnnnn...",
+					"...nnnnn....",
+					"...KKKKK....",
+					"...KKKKK....",
+					".Y........Y.",
+					"Y..........Y"]
+		# --- the crew's weapons (their plain ATTACK) -------------------------
+		"weapon_sword":
+			rows = ["...........s",
+					"..........sS",
+					".........sS.",
+					"........sS..",
+					".......sS...",
+					"..Z...sS....",
+					"...Z.sS.....",
+					"....ZS......",
+					"...K.Z......",
+					"..K...Z.....",
+					".V..........",
+					"............"]
+		"weapon_dagger":
+			rows = ["............",
+					"............",
+					"............",
+					"........s...",
+					".......sS...",
+					"..Z...sS....",
+					"...Z.sS.....",
+					"....ZS......",
+					"...K.Z......",
+					"..K...Z.....",
+					".K..........",
+					"............"]
+		"weapon_bow":
+			rows = ["...D........",
+					"...PDD......",
+					"...P..D.....",
+					"...P...D....",
+					"...P...D....",
+					"PPeeeeeeeeSs",
+					"...P...D....",
+					"...P...D....",
+					"...P..D.....",
+					"...PDD......",
+					"...D........",
+					"............"]
+		"weapon_cane":
+			rows = ["...DDDD.....",
+					"..D....D....",
+					"..D....D....",
+					".......D....",
+					".......D....",
+					".......D....",
+					".......D....",
+					".......D....",
+					".......D....",
+					".......D....",
+					".......D....",
+					".......Z...."]
+		"weapon_sling":
+			rows = ["K...........",
+					".K..........",
+					"..K.........",
+					"...K........",
+					"....KKKK....",
+					"....KAAK....",
+					"....KAAK....",
+					"....KKKK....",
+					"........K...",
+					".........K..",
+					"..........K.",
+					"...........K"]
+		"weapon_club":
+			rows = ["........DDD.",
+					".......DDDDD",
+					"......DDDBDD",
+					".....DDDDDD.",
+					"....DDDDD...",
+					"...DDDD.....",
+					"..DDD.......",
+					".KK.........",
+					"KK..........",
+					"............",
+					"............",
+					"............"]
+		_:
+			rows = _UNKNOWN
+	var b := PixBuf.new(14, 14)
+	b.ascii(rows, icon_pal(), 1, 1)
+	b.outline()
+	return b
+
+
+# ------------------------------------------------------------- stat icons --
+# 10 x 10, for the status pane and the windows: hp, tp, atk, def, spd, coin,
+# finesse, suspicion, loyalty, trust, weight, evidence.
+
+static func stat_icon(id: String) -> PixBuf:
+	var rows: Array
+	match id:
+		"hp":
+			rows = [".bb.bb.", "bWbbbbb", "bbbbbbb", ".bbbbb.", "..bbb..", "...b..."]
+		"tp":
+			rows = ["...c...", "..cYc..", ".cYWYc.", "cYWWWYc", ".cYWYc.", "..cYc..", "...c..."]
+		"atk":
+			rows = ["......s", ".....sS", "....sS.", ".Z.sS..", "..ZS...", ".K.Z...", "K......"]
+		"def":
+			rows = ["SSSSSSS", "SsFFFFS", "SFFFFFS", "SFFFFFS", ".SFFFS.", "..SFS..", "...S..."]
+		"spd":
+			rows = ["k..k...", ".k..k..", "..k..k.", "...k..k", "..k..k.", ".k..k..", "k..k..."]
+		"coin":
+			rows = [".ZZZZ.", "ZYYYYZ", "ZYZZYZ", "ZYZZYZ", "ZYYYYZ", ".ZZZZ."]
+		"finesse":
+			rows = [".....cc", "....cYc", "...cYc.", "..cYc..", ".cYc...", "cc.....", "c......"]
+		"suspicion":
+			rows = ["..VVV..", ".VvvvV.", "VvIWIvV", ".VvvvV.", "..VVV.."]
+		"loyalty":
+			rows = ["...O...", "..OYO..", "..OYYO.", ".OYWYO.", "DD.D.DD", "..DDD.."]
+		"trust":
+			rows = [".GG.GG.", "GWGGGGG", "GGGGGGG", ".GGGGG.", "..GGG..", "...G..."]
+		"weight":
+			rows = ["..AAA..", ".A...A.", "AAAAAAA", "AAAAAAA", "AWAAAAA", ".AAAAA."]
+		"evidence":
+			rows = ["PPPPPP", "PbbbbP", "PPPPPP", "PPnnPP", "PnnnnP", "PPPPPP"]
+		"value":
+			rows = [".ZZZZ.", "ZYYYYZ", "ZYZZYZ", "ZYZZYZ", "ZYYYYZ", ".ZZZZ."]
+		"blade":
+			rows = ["......V", ".....VW", "....VW.", ".Z.VW..", "..ZV...", ".v.Z...", "V......"]
+		_:
+			rows = []
+	var b := PixBuf.new(10, 10)
+	b.ascii(rows, icon_pal(), 1, 1)
 	b.outline()
 	return b

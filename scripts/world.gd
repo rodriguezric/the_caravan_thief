@@ -36,6 +36,7 @@ var marker: Sprite2D
 var fired := {}
 var step_t := 0.0
 var cam_bias := 0.0
+var cam_shot := false
 var water: Sprite2D
 var water_frame := -1
 var hint: Sprite2D
@@ -104,11 +105,19 @@ func setup(map_def: Dictionary, tile: Vector2i, facing: int, p_handler: Object) 
 		Sfx.music(def.music)
 
 
-func _clamp_cam(p: Vector2) -> Vector2:
+func _clamp_cam(p: Vector2, k: float = -1.0, bias: float = -1.0) -> Vector2:
+	## Keeps the view inside the map, at zoom k (default: the current zoom).
+	if k <= 0.0:
+		k = cam.zoom.x
+	if bias < 0.0:
+		bias = cam_bias
 	var mw := tw * TILE
 	var mh := th * TILE
-	var x := mw / 2.0 if mw <= 320 else clampf(p.x, 160.0, mw - 160.0)
-	var y := mh / 2.0 + minf(cam_bias * 0.5, maxf(0.0, (180.0 - mh) / 2.0)) if mh <= 180 else clampf(p.y, 90.0, mh - 90.0)
+	# half the view, which shrinks when the camera pushes in
+	var hw := 160.0 / k
+	var hh := 90.0 / k
+	var x := mw / 2.0 if mw <= hw * 2.0 else clampf(p.x, hw, mw - hw)
+	var y := mh / 2.0 + minf(bias * 0.5, maxf(0.0, (hh * 2.0 - mh) / 2.0)) if mh <= hh * 2.0 else clampf(p.y, hh, mh - hh)
 	return Vector2(x, y)
 
 
@@ -295,9 +304,13 @@ func _process(delta: float) -> void:
 	if Game.main.dialog.visible and Game.reduced_motion():
 		cam_bias = want
 	cam_bias = move_toward(cam_bias, want, delta * 120.0)
-	var target := _clamp_cam((player.position if cam_follow else cam_focus) + Vector2(0, cam_bias))
-	cam.position = cam.position.lerp(target, minf(1.0, delta * 8.0)) if not cam_follow else target
-	cam.position = cam.position.round()
+	# a scripted shot (shot/shot_back) moves the camera itself, and holds it
+	# still afterwards: the dialog lift only applies while following you
+	if not cam_shot:
+		cam.position = _clamp_cam(player.position + Vector2(0, cam_bias))
+	# whole pixels only at 1x: pushed in, rounding makes slow moves stutter
+	if is_equal_approx(cam.zoom.x, 1.0):
+		cam.position = cam.position.round()
 	_update_hint()
 	if busy or paused or Game.main.dialog.visible or not player.visible:
 		if not player.scripted:
@@ -612,26 +625,59 @@ func actor(id: String) -> Actor:
 	return by_id.get(id, null)
 
 
-func pan_to(p: Vector2, t: float = 0.8) -> void:
-	cam_follow = false
-	var from := cam.position
-	cam_focus = p
-	var tw_ := create_tween()
-	tw_.tween_method(func(v: Vector2) -> void: cam_focus = v, from, p, t).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	await tw_.finished
+func shot(focus: Vector2, k: float = -1.0, t: float = 0.8) -> void:
+	## A scripted camera move: one tween takes the view from where it is to
+	## focus (kept inside the map at the end zoom), zooming to k on the way.
+	## It holds there until shot_back.
+	if k <= 0.0:
+		k = cam.zoom.x
+	var to := _clamp_cam(focus, k, 0.0)
+	cam_focus = to
+	await _cam_move(func() -> Vector2: return to, k, t)
 
 
-func pan_back(t: float = 0.6) -> void:
-	await pan_to(player.position, t)
+func shot_back(k: float = 1.0, t: float = 0.6) -> void:
+	## Back to Rook, ending exactly where following him puts the camera (so
+	## there's no jump when it takes over again), zooming back to k.
+	await _cam_move(func() -> Vector2: return _clamp_cam(player.position + Vector2(0, cam_bias), k), k, t)
+	cam_shot = false
 	cam_follow = true
 
 
-func zoom(k: float, t: float = 0.5) -> void:
-	## Push the camera in for a dramatic beat (and back out with zoom(1)).
-	if Game.reduced_motion():
+func _cam_move(dest: Callable, k: float, t: float) -> void:
+	cam_shot = true
+	cam_follow = false
+	var from := cam.position
+	var k0 := cam.zoom.x
+	if Game.reduced_motion() or t <= 0.0:
 		cam.zoom = Vector2(k, k)
+		cam.position = dest.call()
 		return
-	await create_tween().tween_property(cam, "zoom", Vector2(k, k), t).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).finished
+	var tw_ := create_tween()
+	tw_.tween_method(func(e: float) -> void:
+		var z := lerpf(k0, k, e)
+		cam.zoom = Vector2(z, z)
+		cam.position = from.lerp(dest.call(), e), 0.0, 1.0, t).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	await tw_.finished
+
+
+func pan_to(p: Vector2, t: float = 0.8) -> void:
+	await shot(p, -1.0, t)
+
+
+func pan_back(t: float = 0.6) -> void:
+	await shot_back(cam.zoom.x, t)
+
+
+func zoom(k: float, t: float = 0.5) -> void:
+	## Push the camera in for a dramatic beat (and back out with zoom(1)),
+	## on whatever it's looking at.
+	if cam_shot:
+		await shot(cam_focus, k, t)
+	else:
+		await _cam_move(func() -> Vector2: return _clamp_cam(player.position + Vector2(0, cam_bias), k), k, t)
+		cam_shot = false
+		cam_follow = true
 
 
 func set_tint(c: Color, t: float = 0.6) -> void:

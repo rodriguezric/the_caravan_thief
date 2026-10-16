@@ -36,6 +36,42 @@ const SKILLS := {
 ## Rook's arts in the order the SWORD menu lists them.
 const SWORD_ARTS := ["omen_edge", "parry_sight", "thousand", "mine"]
 
+## What the SWORD menu offers before any art: a look ahead at the round.
+const FOREKNOW := {"name": "Foreknowledge", "desc": "See what every enemy means to do this round. Doesn't use your turn.", "target": "none"}
+
+## Each fighter's weapon: their plain ATTACK (attack is its name in battle)
+## and a little of its story, for the Skills window.
+const WEAPONS := {
+	"dagger": {"name": "Rook's Knife", "attack": "Attack", "desc": "Short, nicked, and sharp enough for purse strings. It was never meant for fighting. Neither was Rook."},
+	"sword": {"name": "The Blade", "attack": "Blade", "desc": "Old steel that never dulls, with a violet stone in the pommel that is not a stone. It watches. It remembers every hand that has held it."},
+	"bow": {"name": "Mara's Bow", "attack": "Arrow", "desc": "Yew, horn and sinew, restrung every autumn. She can put an arrow through a lantern's handle at sixty paces, and has."},
+	"cane": {"name": "Fen's Cane", "attack": "Cane Rap", "desc": "Blackthorn and brass, older than most of the crew. It keeps a knife in Fen's boot company."},
+	"sling": {"name": "Wick's Sling", "attack": "Sling Stone", "desc": "Two cords and a leather cup, and pockets full of the best pebbles on the Saltway."},
+	"club": {"name": "Bracken's Club", "attack": "Club", "desc": "A cudgel the size of a young tree. Subtlety was never part of the plan."},
+}
+
+## Skills a crew member doesn't have yet, and when they come (mirrors
+## member() below).
+const LATER := {
+	"rook": [["tumble", "Comes in Act II, or sooner with Finesse 3."], ["grit", "Comes in Act II."]],
+	"mara": [["volley", "Comes in Act II."], ["cover", "Comes when Mara trusts Rook more."]],
+}
+
+const TARGETS := {"enemy": "One foe", "all": "Every foe", "ally": "One ally", "self": "Self", "party": "The crew", "none": "Before the round"}
+
+
+static func weapon_of(id: String) -> String:
+	## The weapon a crew member fights with: the kind a WEAPONS entry is under.
+	if id == "rook":
+		return "sword" if Game.flag("has_sword") else "dagger"
+	return str(Data.spec(id).get("weapon", "dagger"))
+
+
+static func later(id: String) -> Array:
+	## [[skill id, when it comes]] for what this crew member hasn't learned.
+	var known: Array = member(id).skills
+	return LATER.get(id, []).filter(func(l: Array) -> bool: return not known.has(l[0]))
+
 
 static func act() -> int:
 	## 0 = prologue & Act I, 1 = Act II, 2 = Act III.

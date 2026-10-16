@@ -68,17 +68,22 @@ const CAST := {
 ## Things that can be carried. weight limits what can be grabbed at once;
 ## evidence is how badly it gives Rook away; owner is who it can go back to.
 const ITEMS := {
-	"purse": {"name": "Ollo's Purse", "desc": "Fat with silver. Embroidered OLLO, in case anyone wondered.", "value": 30, "weight": 1, "evidence": 1, "owner": "ollo"},
-	"seal_ring": {"name": "Silver Seal-Ring", "desc": "A merchant's seal. Without it Ollo can't sign for goods at the border.", "value": 45, "weight": 0, "evidence": 3, "owner": "ollo", "key": true},
-	"saffron": {"name": "Saffron Box", "desc": "A lacquered box of saffron threads. Worth more than the wagon carrying it.", "value": 40, "weight": 2, "evidence": 1, "owner": "ollo"},
-	"silk": {"name": "Bolt of Dyed Silk", "desc": "Violet silk from the far coast. Heavy, beautiful, very noticeable.", "value": 50, "weight": 3, "evidence": 2, "owner": "ollo"},
-	"icon": {"name": "Pilgrim's Icon", "desc": "A painted wooden saint, worn smooth by a family's hands. Worth almost nothing to anyone else.", "value": 8, "weight": 1, "evidence": 1, "owner": "pilgrim", "key": true},
-	"ledger": {"name": "The Factor's Ledger", "desc": "Columns of names, each with a date and a single word: KEPT. The oldest pages are not in any language you know.", "value": 0, "weight": 1, "evidence": 3, "owner": "factor", "lore": true},
-	"map": {"name": "Map Scrap", "desc": "Half a map of the Pass of Teeth. Someone has drawn a door where there is only rock.", "value": 0, "weight": 0, "evidence": 0, "lore": true},
-	"poster": {"name": "Wanted Poster", "desc": "THE CARAVAN THIEF. 50 CROWNS. The drawing makes his nose much bigger than it is.", "value": 0, "weight": 0, "evidence": 1},
-	"letter": {"name": "Mara's Letter", "desc": "To her sister in Velt. It is mostly about how badly she sleeps on the road.", "value": 0, "weight": 0, "evidence": 0, "owner": "mara"},
-	"payroll": {"name": "Caravan Payroll", "desc": "Three months of wages for every guard on the Saltway. A legend's worth of coin.", "value": 300, "weight": 3, "evidence": 3, "owner": "ollo"},
+	"purse": {"cat": "goods", "name": "Ollo's Purse", "desc": "Fat with silver. Embroidered OLLO, in case anyone wondered.", "value": 30, "weight": 1, "evidence": 1, "owner": "ollo"},
+	"seal_ring": {"cat": "goods", "name": "Silver Seal-Ring", "desc": "A merchant's seal. Without it Ollo can't sign for goods at the border.", "value": 45, "weight": 0, "evidence": 3, "owner": "ollo", "key": true},
+	"saffron": {"cat": "goods", "name": "Saffron Box", "desc": "A lacquered box of saffron threads. Worth more than the wagon carrying it.", "value": 40, "weight": 2, "evidence": 1, "owner": "ollo"},
+	"silk": {"cat": "goods", "name": "Bolt of Dyed Silk", "desc": "Violet silk from the far coast. Heavy, beautiful, very noticeable.", "value": 50, "weight": 3, "evidence": 2, "owner": "ollo"},
+	"icon": {"cat": "goods", "name": "Pilgrim's Icon", "desc": "A painted wooden saint, worn smooth by a family's hands. Worth almost nothing to anyone else.", "value": 8, "weight": 1, "evidence": 1, "owner": "pilgrim", "key": true},
+	"ledger": {"cat": "keep", "name": "The Factor's Ledger", "desc": "Columns of names, each with a date and a single word: KEPT. The oldest pages are not in any language you know.", "value": 0, "weight": 1, "evidence": 3, "owner": "factor", "lore": true},
+	"map": {"cat": "keep", "name": "Map Scrap", "desc": "Half a map of the Pass of Teeth. Someone has drawn a door where there is only rock.", "value": 0, "weight": 0, "evidence": 0, "lore": true},
+	"poster": {"cat": "keep", "name": "Wanted Poster", "desc": "THE CARAVAN THIEF. 50 CROWNS. The drawing makes his nose much bigger than it is.", "value": 0, "weight": 0, "evidence": 1},
+	"letter": {"cat": "keep", "name": "Mara's Letter", "desc": "To her sister in Velt. It is mostly about how badly she sleeps on the road.", "value": 0, "weight": 0, "evidence": 0, "owner": "mara"},
+	"payroll": {"cat": "goods", "name": "Caravan Payroll", "desc": "Three months of wages for every guard on the Saltway. A legend's worth of coin.", "value": 300, "weight": 3, "evidence": 3, "owner": "ollo"},
 }
+
+## The Items window's categories, in tab order: SUPPLIES (counted, used up
+## in battle), then ITEMS by their cat: goods (worth something to someone)
+## and keepsakes (papers and proof).
+const ITEM_CATS := [["supply", "Supplies"], ["goods", "Goods"], ["keep", "Keepsakes"]]
 
 ## Battle items (consumable). heal: HP; tp: technique points.
 const SUPPLIES := {

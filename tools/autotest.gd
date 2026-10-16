@@ -5,6 +5,7 @@ extends Node
 ##                    CT_AUTOPLAY on; CT_CHOICES / CT_ACT / CT_SWORD /
 ##                    CT_EXPLORE steer it. CT_STATE="var=n,flag,!flag,..." presets (!flag clears).
 ##   battle:<kind>    a sample battle, screenshots through its animations
+##                    (CT_MENUS=1 without CT_AUTOPLAY: screenshots of its menus)
 ##   shell            title, endings, settings, records, achievements
 ##   slots            save slots: the old single save moving into slot 1,
 ##                    Load Game and New Game's slot lists (needs CT_DIR)
@@ -124,6 +125,24 @@ func _run(scenario: String) -> void:
 				enemies = [BattleDefs.enemy("factor")]
 		if every > 0.0:
 			_shoot_loop(every)
+		if OS.get_environment("CT_MENUS") != "":
+			# without the autopilot: open each sub-menu of the first turn and
+			# screenshot it (skills, then sword or item, then item)
+			var peek := func() -> void:
+				await wait(4.0)
+				await shot("menu_cmd")
+				for i in 3:
+					for k in [["right"], ["down"], ["down", "right"]][i]:
+						await tap(k)
+					await tap("accept")
+					await wait(0.4)
+					await shot("menu_sub_%d" % i)
+					await tap("cancel")
+					await wait(0.3)
+					await tap("up")
+					await tap("left")
+				get_tree().quit()
+			peek.call()
 		var r: Dictionary = await main.battle({"id": "test", "title": "A test of steel", "bg": OS.get_environment("CT_BG") if OS.get_environment("CT_BG") != "" else "road",
 			"party": main.story.party(), "enemies": enemies})
 		shooting = false
@@ -248,6 +267,49 @@ func _run(scenario: String) -> void:
 			main.world.run(main.field_menu)
 			await wait(0.6)
 			await shot("pause_status")
+			# the other crew members' pages
+			await tap("right")
+			await wait(0.3)
+			await shot("pause_status_2")
+			await tap("right")
+			await wait(0.3)
+			await shot("pause_status_3")
+			await tap("right")
+			# the items window, every category
+			await tap("down")
+			await tap("accept")
+			await wait(0.3)
+			await shot("items_1")
+			await tap("right")
+			await wait(0.2)
+			await shot("items_2")
+			await tap("down")
+			await wait(0.2)
+			await shot("items_2b")
+			await tap("right")
+			await wait(0.2)
+			await shot("items_3")
+			await tap("cancel")
+			await wait(0.3)
+			# the skills window, every tab
+			await tap("down")
+			await tap("accept")
+			await wait(0.3)
+			await shot("skills_1")
+			await tap("down")
+			await tap("down")
+			await tap("down")
+			await wait(0.2)
+			await shot("skills_1_locked")
+			for i in 3:
+				await tap("right")
+				await wait(0.2)
+				await shot("skills_%d" % (i + 2))
+			await tap("down")
+			await wait(0.2)
+			await shot("skills_last_row2")
+			await tap("cancel")
+			await wait(0.3)
 			await tap("down")
 			await wait(0.3)
 			await shot("pause_log")

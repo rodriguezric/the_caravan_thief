@@ -1,12 +1,26 @@
 class_name PauseMenu
 extends Control
-## The field pause menu (X / Esc): resume, status (the story's variables in
-## character language, the blade, what Rook carries, what he's learned), the
-## dialog log, achievements, settings, or save and quit to the title.
+## The field pause menu (X / Esc). The crew's status is always the open pane:
+## a face (it blinks; Rook's eyes go violet as Suspicion climbs), fighting
+## numbers, weapon, and for Rook the story's variables, purse and load; for
+## the others, their trust and techniques, each with its icon. Left/Right
+## turn to the next crew member. The menu: resume, items and skills (their
+## own windows, by category), the dialog log, achievements, settings, or save
+## and quit to the title.
 
 var menu: Menu
 var info: NinePatchRect
 var info_body: Control
+var pic: TextureRect
+var pic_spec := {}
+var pic_mood := ""
+var blink_t := 2.0
+## Whose status is showing (an index into crew), and whether a window is
+## open over the menu (taps and Left/Right then belong to it).
+var crew: Array = ["rook"]
+var who := 0
+var busy := false
+var showing_log := false
 
 
 func _init() -> void:
@@ -22,7 +36,11 @@ func _init() -> void:
 	info_body = Control.new()
 	info_body.position = Vector2(6, 4)
 	info.add_child(info_body)
+	if Game.main and Game.main.story:
+		crew = Game.main.story.party()
 	_status()
+	set_meta("tap_priority", 1)
+	add_to_group("tap_targets")
 
 
 func _clear() -> void:
@@ -64,46 +82,152 @@ static func bond_word(n: int) -> String:
 
 func _status() -> void:
 	_clear()
+	showing_log = false
+	var id: String = crew[who]
+	var me := BattleDefs.member(id)
+	# the face, in a frame
+	var frame := ColorRect.new()
+	frame.color = Pal.INK
+	frame.size = Vector2(52, 48)
+	info_body.add_child(frame)
+	pic_spec = Game.main.story.rook_spec() if id == "rook" else Data.spec(id)
+	if id == "rook":
+		pic_mood = "omen" if Game.hostile_allies() else ("worried" if Game.v("suspicion") >= 4 else "")
+	else:
+		var t := Game.v(id)
+		pic_mood = "angry" if t <= -2 else ("smile" if t >= 3 else "")
+	pic = TextureRect.new()
+	pic.texture = _face(false)
+	pic.position = ((frame.size - pic.texture.get_size()) / 2.0).floor()
+	frame.add_child(pic)
+	_l(str(me.name), Vector2(58, 1), Pal.CANDLE)
+	if crew.size() > 1:
+		# whose page this is, and the way to the others
+		var pg := "%d/%d" % [who + 1, crew.size()]
+		_icon("cursor_r", Vector2(172, 1))
+		_l(pg, Vector2(188 - Art.text_width(pg) / 2.0, 1), Pal.TEXT_DIM)
+		_icon("cursor", Vector2(198, 1))
 	var s := Data.scene(str(Game.run.get("scene", "P1")))
-	_l(s.act, Vector2(0, 0), Pal.TEXT_DIM)
-	_l(s.title, Vector2(0, 10), Pal.LEMON)
-	var y := 24.0
-	for row in [["Finesse", "finesse", Pal.CANDLE], ["Suspicion", "suspicion", Pal.OMEN], ["Loyalty", "loyalty", Pal.GLOW]]:
-		_l(row[0], Vector2(0, y))
-		_meter(Vector2(64, y + 3), Game.v(row[1]) / 10.0, row[2])
-		y += 10
-	_l("Mara", Vector2(132, 24))
-	_l(bond_word(Game.v("mara")) if Game.flag("met_mara") else "?", Vector2(166, 24), Pal.GLOW.lerp(Pal.WHITE, 0.4))
-	_l("Fen", Vector2(132, 34))
-	_l(bond_word(Game.v("fen")), Vector2(166, 34), Pal.GLOW.lerp(Pal.WHITE, 0.4))
-	_l("Coin", Vector2(132, 44))
-	_l(str(Game.v("coin")), Vector2(166, 44), Pal.BRASS)
-	y = 58.0
-	_l("The blade: " + (Game.tier_name() if Game.flag("has_sword") else "not yours"), Vector2(0, y), Pal.OMEN.lerp(Pal.WHITE, 0.3))
-	y += 12
-	var items: Array = Game.run.get("items", [])
-	_l("Carrying (%d weight):" % Game.weight(), Vector2(0, y), Pal.TEXT_DIM)
-	y += 10
-	if items.is_empty():
-		_l("nothing that isn't yours", Vector2(6, y), Pal.TEXT_DIM)
-		y += 10
-	for id in items.slice(0, 6):
-		_l(str(Data.item(id).name), Vector2(6, y))
-		y += 10
-	var sup := []
-	for id in Data.SUPPLIES:
-		if Game.supply(id) > 0:
-			sup.append("%s x%d" % [Data.SUPPLIES[id].name, Game.supply(id)])
-	if not sup.is_empty():
-		var l := _l("Pack: " + ", ".join(sup), Vector2(0, y + 2), Pal.CREAM)
-		l.size = Vector2(204, 30)
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD
-		y += 22
-	_l("Lore %d   Vault clues %d/3" % [Game.run.get("lore", []).size(), Game.run.get("clues", []).size()], Vector2(0, maxf(y + 4, 150)), Pal.TEXT_DIM)
+	if id == "rook":
+		_l(s.act, Vector2(58, 12), Pal.TEXT_DIM)
+		_l(s.title, Vector2(58, 22), Pal.LEMON)
+		_stat(["stat_blade", "Blade", Game.tier_name() if Game.flag("has_sword") else "not his"], Vector2(58, 35),
+			Pal.OMEN.lerp(Pal.WHITE, 0.3), 146)
+	else:
+		var t := Game.v(id)
+		_icon("stat_trust", Vector2(58, 13))
+		_l("Trust", Vector2(71, 12), Pal.TEXT_DIM)
+		_meter(Vector2(104, 15), (t + 5) / 11.0, Pal.GLOW.lerp(Pal.SAGE, 0.3) if t >= 0 else Pal.ROSE)
+		_l(bond_word(t), Vector2(170, 12), Pal.GLOW.lerp(Pal.WHITE, 0.4) if t >= 0 else Pal.ROSE.lerp(Pal.WHITE, 0.35))
+		_l(s.title, Vector2(58, 24), Pal.TEXT_DIM)
+	# how they fight (what BattleDefs.member gives the battle right now),
+	# two to a row, each with its icon
+	var y := 54.0
+	var w := BattleDefs.weapon_of(id)
+	var cells := [["stat_hp", "HP", str(me.hp)], ["stat_tp", "TP", str(me.tp)],
+		["stat_atk", "Attack", str(me.atk)], ["stat_def", "Defence", str(me["def"])],
+		["stat_spd", "Speed", str(me.spd)]]
+	for i in cells.size():
+		_stat(cells[i], Vector2((i % 2) * 106, y + (i / 2) * 12))
+	_icon("weapon_" + w, Vector2(106, y + 22))
+	_l(BattleDefs.WEAPONS[w].name, Vector2(121, y + 24), Pal.CREAM)
+	y += 40
+	_rule(y)
+	y += 5
+	if id == "rook":
+		# the story's variables, the purse and the load
+		var vars := [["stat_finesse", "Finesse", "finesse", Pal.CANDLE], ["stat_suspicion", "Suspicion", "suspicion", Pal.OMEN],
+			["stat_loyalty", "Loyalty", "loyalty", Pal.GLOW]]
+		for i in vars.size():
+			var r: Array = vars[i]
+			_icon(r[0], Vector2(0, y + i * 12))
+			_l(r[1], Vector2(13, y + i * 12), Pal.TEXT_DIM)
+			_meter(Vector2(62, y + i * 12 + 3), Game.v(r[2]) / 10.0, r[3])
+		_stat(["stat_coin", "Coin", str(Game.v("coin"))], Vector2(130, y), Pal.BRASS.lerp(Pal.LEMON, 0.3), 76)
+		_stat(["stat_weight", "Load", str(Game.weight())], Vector2(130, y + 12), Pal.CREAM, 76)
+		_stat(["stat_evidence", "Evidence", str(Game.evidence())], Vector2(130, y + 24),
+			Pal.BLOOD.lerp(Pal.WHITE, 0.3) if Game.evidence() >= 4 else Pal.CREAM, 76)
+		y += 40
+		_l("Lore %d   Vault clues %d/3" % [Game.run.get("lore", []).size(), Game.run.get("clues", []).size()], Vector2(0, y), Pal.TEXT_DIM)
+	else:
+		# their techniques, two to a row
+		var sks: Array = me.skills
+		for i in sks.size():
+			var p := Vector2((i % 2) * 106, y + (i / 2) * 15)
+			_icon("skill_" + str(sks[i]), p)
+			_l(BattleDefs.SKILLS[sks[i]].name, p + Vector2(16, 2), Pal.TEXT)
+
+
+func _icon(id: String, pos: Vector2) -> TextureRect:
+	var t := TextureRect.new()
+	t.texture = Art.ui(id)
+	t.position = pos
+	info_body.add_child(t)
+	return t
+
+
+func _stat(cell: Array, pos: Vector2, col: Color = Pal.LEMON, width: float = 100.0) -> void:
+	## [icon, label, value] in a cell: icon, the word, the value at the right.
+	_icon(cell[0], pos)
+	_l(cell[1], pos + Vector2(13, 0), Pal.TEXT_DIM)
+	_l(cell[2], pos + Vector2(width - 6 - Art.text_width(cell[2]), 0), col)
+
+
+func _rule(y: float) -> void:
+	var r := ColorRect.new()
+	r.color = Color(Pal.TEXT_DIM, 0.35)
+	r.position = Vector2(0, y)
+	r.size = Vector2(204, 1)
+	info_body.add_child(r)
+
+
+func _face(shut: bool) -> Texture2D:
+	return Art.portrait(pic_spec, pic_mood, shut, false, 2)
+
+
+func _turn(d: int) -> void:
+	## Left/Right (or the arrows): the next crew member's page.
+	if crew.size() < 2 or showing_log:
+		return
+	who = (who + d + crew.size()) % crew.size()
+	Sfx.play("blip")
+	_status()
+
+
+func _process(delta: float) -> void:
+	if not busy and menu and menu.active:
+		if Input.is_action_just_pressed("left"):
+			_turn(-1)
+		elif Input.is_action_just_pressed("right"):
+			_turn(1)
+	# the portrait blinks now and then, like the talking portraits do
+	if not is_instance_valid(pic):
+		return
+	blink_t -= delta
+	if blink_t <= 0.0:
+		var shut := blink_t > -0.12
+		pic.texture = _face(shut)
+		if not shut:
+			blink_t = randf_range(2.0, 5.0)
+
+
+func tap(p: Vector2) -> bool:
+	## Touch: the arrows by the name turn the page.
+	if busy or showing_log or crew.size() < 2:
+		return false
+	var o := info.position + info_body.position
+	if Rect2(o + Vector2(166, -2), Vector2(16, 14)).has_point(p):
+		_turn(-1)
+		return true
+	if Rect2(o + Vector2(193, -2), Vector2(16, 14)).has_point(p):
+		_turn(1)
+		return true
+	return false
 
 
 func _log() -> void:
 	_clear()
+	showing_log = true
 	var bl: Array = Game.main.dialog.backlog
 	var lines := []
 	for e in bl:
@@ -114,15 +238,23 @@ func _log() -> void:
 		_l(lines[i][0], Vector2(0, (i - start) * 10), lines[i][1])
 
 
+func _window(w: Control) -> void:
+	busy = true
+	add_child(w)
+	await w.run()
+	w.queue_free()
+	busy = false
+
+
 func run() -> String:
-	var opts := ["Resume", "Status", "Log", "Achievements", "Settings", "Save & quit"]
+	var opts := ["Resume", "Items", "Skills", "Log", "Achievements", "Settings", "Save & quit"]
 	menu = Menu.make(self, opts, Vector2(6, 6), Vector2(86, opts.size() * 10 + 7))
 	menu.scale = Vector2(1, 0.2)
 	create_tween().tween_property(menu, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	menu.moved.connect(func(i: int) -> void:
-		if i == 2:
+		if i == 3:
 			_log()
-		elif i == 1:
+		elif showing_log:
 			_status())
 	while true:
 		var r := await menu.ask()
@@ -130,20 +262,17 @@ func run() -> String:
 			-1, 0:
 				return "resume"
 			1:
+				await _window(ItemsWindow.new())
 				_status()
 			2:
-				_log()
+				await _window(SkillsWindow.new(crew[who]))
 			3:
-				var a := AchievementsScreen.new()
-				add_child(a)
-				await a.run()
-				a.queue_free()
+				_log()
 			4:
-				var s := SettingsScreen.new()
-				add_child(s)
-				await s.run()
-				s.queue_free()
+				await _window(AchievementsScreen.new())
 			5:
+				await _window(SettingsScreen.new())
+			6:
 				var c: int = await Game.main.dialog.ask("Quit to the title? Your journey is saved in slot %d at the start of this scene." % (Game.slot + 1), ["Keep playing", "Save & quit"])
 				if c == 1:
 					return "title"

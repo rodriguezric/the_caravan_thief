@@ -69,9 +69,14 @@ Continue / Load Game / New Game / Endings / Achievements / Records / Settings / 
   fate, the mark carved on it).
 - **Settings**: volumes, reduced motion, screen shake, text speed, battle speed,
   controls, and stored-data clearing (each names its scope and asks first).
-- In the field, **X/Esc** opens the pause menu: Status (Finesse, Suspicion,
-  Loyalty, relationships, the blade's mastery tier, what Rook carries, lore and
-  vault clues), Log (the dialog backlog), Achievements, Settings, Save & quit.
+- In the field, **X/Esc** opens the pause menu. The status pane is always
+  open: each crew member's face, fighting numbers and weapon, with icons
+  (Left/Right turns to the next one); for Rook also Finesse, Suspicion,
+  Loyalty, the blade's mastery tier, coin, load, evidence, lore and vault
+  clues; for Mara and Fen their trust and techniques. Then Items (supplies,
+  goods, keepsakes: icon, worth, weight, evidence, who it belongs to), Skills
+  (one tab per crew member plus the blade: weapon, techniques with costs and
+  descriptions, what's still to come), Log, Achievements, Settings, Save & quit.
 
 ## The story
 
@@ -177,7 +182,7 @@ scripts/
   actor.gd world.gd dialog.gd menu.gd cinema.gd fx.gd   field, stealth, dialogue, vignettes, particles
   battle/             battle.gd (flow + choreography), battle_unit.gd, battle_defs.gd, battle_results.gd
   minigames/          lockpick, pickpocket, loot grab
-  screens/            opening, title, endings, settings, records, achievements, ending card, pause
+  screens/            opening, title, endings, settings, records, achievements, ending card, pause, items, skills
   story/              story.gd (director), story_part.gd, story_act1..3.gd (the scenes)
 tools/
   autotest.gd         automated runs and screenshots

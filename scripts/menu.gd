@@ -16,6 +16,7 @@ var cancellable := true
 var cursor: TextureRect
 var labels: Array = []
 var _armed := 0
+var _text_dy := 0
 
 
 static func make(parent: Node, opts: Array, pos: Vector2, size_: Vector2, p_cols: int = 1) -> Menu:
@@ -35,18 +36,31 @@ static func make(parent: Node, opts: Array, pos: Vector2, size_: Vector2, p_cols
 
 
 func set_entries(opts: Array) -> void:
-	## opts: strings, or {text, enabled, right} dictionaries.
+	## opts: strings, or {text, enabled, right, icon} dictionaries. If any
+	## entry has an icon (a 14 x 14 texture), rows grow to fit one.
 	for l in labels:
 		l.queue_free()
 	labels.clear()
 	entries = []
 	for o in opts:
 		entries.append(o if o is Dictionary else {"text": o})
+	var icons := entries.any(func(e: Dictionary) -> bool: return e.has("icon"))
+	if icons:
+		row_h = 14
+		_text_dy = 2
 	for i in entries.size():
 		var e: Dictionary = entries[i]
+		if e.has("icon"):
+			var ic := TextureRect.new()
+			ic.texture = e.icon
+			ic.position = _slot(i) + Vector2(7, -1)
+			if not e.get("enabled", true):
+				ic.modulate = Color(1, 1, 1, 0.45)
+			add_child(ic)
+			labels.append(ic)
 		var l := Label.new()
 		l.text = e.text
-		l.position = _slot(i) + Vector2(8, 0)
+		l.position = _slot(i) + Vector2(23 if icons else 8, _text_dy)
 		var col := Pal.TEXT if e.get("enabled", true) else Pal.TEXT_DIM
 		l.add_theme_color_override("font_color", col)
 		add_child(l)
@@ -56,7 +70,7 @@ func set_entries(opts: Array) -> void:
 			r.text = str(e.right)
 			r.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			r.size = Vector2(col_w - 12, 10)
-			r.position = _slot(i)
+			r.position = _slot(i) + Vector2(0, _text_dy)
 			r.add_theme_color_override("font_color", col)
 			add_child(r)
 			labels.append(r)
@@ -74,7 +88,7 @@ func _slot(i: int) -> Vector2:
 
 func _place_cursor() -> void:
 	if cursor:
-		cursor.position = _slot(index) + Vector2(0, 0)
+		cursor.position = _slot(index) + Vector2(0, _text_dy)
 		cursor.visible = active or entries.size() > 0
 
 

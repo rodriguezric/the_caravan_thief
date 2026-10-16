@@ -665,24 +665,24 @@ func _sub_menu(u: BattleUnit, kind: String) -> Dictionary:
 				var sk: Dictionary = BattleDefs.SKILLS[sid].duplicate()
 				sk.id = sid
 				list.append(sk)
-				opts.append({"text": sk.name, "right": "%d TP" % sk.cost, "enabled": u.tp >= int(sk.cost)})
+				opts.append({"text": sk.name, "right": "%d TP" % sk.cost, "enabled": u.tp >= int(sk.cost), "icon": Art.ui("skill_" + str(sid))})
 		"sword":
-			list.append({"id": "foreknow", "name": "Foreknowledge", "desc": "See what every enemy means to do this round. Doesn't use your turn.", "target": "none"})
-			opts.append({"text": "Foreknowledge", "right": "x%d" % fk_charges, "enabled": fk_charges > 0 and not foreknown})
+			list.append(BattleDefs.FOREKNOW.merged({"id": "foreknow"}))
+			opts.append({"text": "Foreknowledge", "right": "x%d" % fk_charges, "enabled": fk_charges > 0 and not foreknown, "icon": Art.ui("skill_foreknow")})
 			for sk in _sword_list(u):
 				list.append(sk)
-				opts.append({"text": sk.name, "right": "+%d" % int(sk.get("suspicion", 1))})
+				opts.append({"text": sk.name, "right": "+%d" % int(sk.get("suspicion", 1)), "icon": Art.ui("skill_" + str(sk.id))})
 		"items":
 			for s in _supply_list():
 				list.append(s)
-				opts.append({"text": s.name, "right": "x%d" % s.count})
+				opts.append({"text": s.name, "right": "x%d" % s.count, "icon": Art.ui("item_" + str(s.id))})
 		"act":
 			for a in _act_list(u):
 				list.append(a)
 				opts.append({"text": a.name})
 	if list.is_empty():
 		return {}
-	var h := opts.size() * 10 + 7
+	var h := opts.size() * (10 if kind == "act" else 14) + 7
 	var m := Menu.make(ui_root, opts, Vector2(106, 176 - h), Vector2(210, h))
 	m.moved.connect(func(i: int) -> void:
 		if i < list.size():

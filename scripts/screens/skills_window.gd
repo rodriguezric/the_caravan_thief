@@ -22,6 +22,10 @@ var keys: Array = []
 var list_body: Control
 var detail_body: Control
 var cursor: ColorRect
+## The first row shown; keys keep the cursor inside the view, a finger
+## drags it (scroll_acc holds the part of a row dragged so far).
+var top := 0
+var scroll_acc := 0.0
 
 
 func _init(first: String = "rook") -> void:
@@ -93,7 +97,25 @@ func _rows_in(c: int) -> Array:
 
 
 func _top() -> int:
-	return clampi(index - ROWS + 1, 0, maxi(0, rows.size() - ROWS))
+	top = clampi(top, maxi(0, index - ROWS + 1), index)
+	top = clampi(top, 0, maxi(0, rows.size() - ROWS))
+	return top
+
+
+func scroll_by(dy: float) -> void:
+	## Touch drag: slide the list a row at a time; the cursor stays on screen.
+	scroll_acc += dy
+	var steps := int(scroll_acc / ROW_H)
+	if steps == 0:
+		return
+	scroll_acc -= steps * ROW_H
+	var to := clampi(top + steps, 0, maxi(0, rows.size() - ROWS))
+	if to == top:
+		scroll_acc = 0.0
+		return
+	top = to
+	index = clampi(index, top, top + ROWS - 1)
+	_fill()
 
 
 func _fill() -> void:
@@ -103,7 +125,7 @@ func _fill() -> void:
 		(tabs[i] as Label).add_theme_color_override("font_color", Pal.LEMON if i == cat else Pal.TEXT_DIM)
 	for c in list_body.get_children():
 		c.queue_free()
-	var top := _top()
+	_top()
 	for i in range(top, mini(top + ROWS, rows.size())):
 		var r: Dictionary = rows[i]
 		var locked: bool = r.lock != ""
@@ -204,6 +226,7 @@ func _switch(c: int) -> void:
 	if c != cat:
 		cat = c
 		index = 0
+		top = 0
 		Sfx.play("blip")
 		_fill()
 

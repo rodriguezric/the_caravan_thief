@@ -9,14 +9,19 @@ extends Control
 ##   is used, so desktop players never see them.
 ## - Wide screens: the controls live in the side bars beside the game.
 ##   16:9 screens: they overlay the corners, semi-transparent.
-## - Default layout: a floating joystick (touch anywhere on the left part of
-##   the screen; a small push walks, a big push runs), A = OK, B = back, a
-##   pause button, and tapping the game itself presses OK (advances dialog).
+## - Default layout: a floating joystick that appears only under your thumb
+##   (touch anywhere on the left part of the screen; a small push walks, a
+##   big push runs), B = back, a pause button, and tapping the game itself
+##   presses OK (talks, advances dialog). There is no A button.
 ## - The top-right slot holds one button at a time, the same size either way:
 ##   MENU while walking around (opens the pause menu), B wherever "back"
 ##   exists (settings, lists, battle targets...), or nothing at all.
-## - Minigames swap in their own big buttons (Game.touch_layout): arrows (with
-##   swipes), hold, mash, tap, left/right, up/down; some add tilt.
+## - Minigames pick a layout (Game.touch_layout). Tap, hold and mash games
+##   are played by touching anywhere on the screen; left/right games by
+##   touching the left or right half. Arrow games follow the "touch_arrows"
+##   setting: swipe anywhere (side bars included) in the arrow's direction,
+##   four arrow buttons, or both (swipe on the picture, buttons beside it).
+##   Up/down keep their buttons. Some add tilt.
 
 const PAD_ART := 37
 ## The floating joystick: where it can be summoned (share of screen width
@@ -27,6 +32,11 @@ const JOY_RUN := 0.7
 ## A direction counts once the stick leans this far toward it (diagonals ok).
 const JOY_AXIS := 0.38
 const SWIPE := 0.06
+## Scrolling lists: a finger must travel this far (game pixels) before a
+## touch counts as a drag instead of a tap; a flick keeps gliding, slowing
+## by this factor each second.
+const SCROLL_START := 5.0
+const FLING_DECAY := 0.03
 ## Smallest each control may be, as a share of the screen height, whatever
 ## room the black side bars leave (they overhang the game if they must).
 const MIN_PAD := 0.24
@@ -47,12 +57,11 @@ var fingers := {}
 ## Reference counts per action, so two sources can hold the same action.
 var held := {}
 ## Joystick state: which finger holds it, its ring centre and knob, its size,
-## where its ghost rests, and the directions it is pressing (with strength).
+## and the directions it is pressing (with strength).
 var joy_finger := -1
 var joy_origin := Vector2.ZERO
 var joy_knob := Vector2.ZERO
 var joy_radius := 1.0
-var joy_rest := Vector2.ZERO
 var joy_dirs := {}
 ## When the ring had to shift to stay on screen, the thumb's starting offset
 ## from its centre, so touching down never counts as a push.
@@ -60,6 +69,9 @@ var joy_offset := Vector2.ZERO
 var joy_blocked := true
 var running := false
 var layout := ""
+## The "touch_arrows" setting the controls were laid out for: 0 swipe,
+## 1 buttons, 2 both.
+var arrow_mode := 0
 ## 0..1: how far controls have faded aside for dialog or a tappable menu,
 ## and which ones: dialog hides pad, A and B; a menu or list hides pad and A
 ## (B stays for "back"). Pause always stays.
@@ -71,6 +83,11 @@ var slot_alpha := {"menu": 0.0, "b": 0.0}
 var tilt_base := Vector3.ZERO
 var tilt_dirs := {}
 var web_unlocked := false
+## Drag-scrolling: the list's speed (game px/s) while a finger moves it, and
+## the glide left over after a flick.
+var scroll_v := 0.0
+var scroll_t := 0.0
+var fling_v := 0.0
 
 
 func _init() -> void:
@@ -114,39 +131,26 @@ func relayout() -> void:
 	_add("menu", slot_c, "menu", "", "menu")
 	_add("b", slot_c, "b", "cancel", "button")
 	match layout:
-		"arrows":
-			var s := 25.0 * _scale_for("arrow_up", 1.0)
-			# left/right stack diagonally so they fit a narrow side bar
-			var dx := s * (0.25 if in_bars else 0.55)
-			var dy := s * (0.55 if in_bars else 0.0)
-			_add("left", left_c + Vector2(-dx, -dy), "arrow_left", "left", "button")
-			_add("right", left_c + Vector2(dx, dy), "arrow_right", "right", "button")
-			_add("up", right_c + Vector2(0, -s * 0.55), "arrow_up", "up", "button")
-			_add("down", right_c + Vector2(0, s * 0.55), "arrow_down", "down", "button")
-		"lr":
-			_add("left", left_c, "arrow_left", "left", "button", 1.4)
-			_add("right", right_c, "arrow_right", "right", "button", 1.4)
 		"ud":
 			_add("up", left_c, "arrow_up", "up", "button", 1.4)
 			_add("down", right_c, "arrow_down", "down", "button", 1.4)
-		"hold":
-			_add("hold", right_c, "big_hold", "accept", "button", 1.3)
-		"mash":
-			_add("mash_l", left_c, "big_mash", "accept", "button", 1.3)
-			_add("mash_r", right_c, "big_mash", "accept", "button", 1.3)
-		"tap":
-			_add("tap", right_c, "big_tap", "accept", "button", 1.3)
-		"touch":
-			pass   # played entirely by tapping the picture (backgammon)
+		"arrows":
+			if _arrow_buttons():
+				var s := 25.0 * _scale_for("arrow_up", 1.0)
+				# left/right stack diagonally so they fit a narrow side bar
+				var dx := s * (0.25 if in_bars else 0.55)
+				var dy := s * (0.55 if in_bars else 0.0)
+				_add("left", left_c + Vector2(-dx, -dy), "arrow_left", "left", "button")
+				_add("right", left_c + Vector2(dx, dy), "arrow_right", "right", "button")
+				_add("up", right_c + Vector2(0, -s * 0.55), "arrow_up", "up", "button")
+				_add("down", right_c + Vector2(0, s * 0.55), "arrow_down", "down", "button")
+			# swiping needs no controls (see _swipe_zone)
+		"lr", "hold", "mash", "tap", "touch":
+			pass   # played by touching the screen itself (see _zone_action)
 		_:
 			# the joystick isn't a fixed control: it appears where you touch
-			joy_rest = left_c
 			joy_radius = PAD_ART * ck / 2.0
-			var s := 21.0 * _scale_for("a", 1.0)
-			if layout != "pad":
-				# (the void drift only steers; it has no use for A)
-				_add("a", right_c + Vector2(s * 0.25, s * 0.1), "a", "accept", "button")
-	if in_bars and layout in ["lr", "ud", "hold", "mash", "tap", "arrows"]:
+	if in_bars and _bar_buttons():
 		_bar_hits(win, bar)
 	queue_redraw()
 
@@ -163,6 +167,15 @@ func _bar_hits(win: Vector2, bar: float) -> void:
 		var h := (win.y - top) / maxf(1.0, mine.size())
 		for i in mine.size():
 			mine[i].hit = Rect2(x0, top + h * i, bar, h)
+
+
+func _arrow_buttons() -> bool:
+	return arrow_mode != 0
+
+
+func _bar_buttons() -> bool:
+	## Whether this layout's buttons take over the side bars.
+	return layout == "ud" or (layout == "arrows" and _arrow_buttons())
 
 
 func _scale_for(art: String, k: float) -> float:
@@ -203,11 +216,15 @@ func _process(delta: float) -> void:
 	# "auto" = the usual pad and buttons, shown only when they're needed;
 	# minigames ask for their own layout (or "pad" to keep it up throughout)
 	var want := Game.touch_layout if Game.touch_layout != "" else "auto"
-	if want != layout:
+	var am := int(Game.settings.get("touch_arrows", 0))
+	if want != layout or am != arrow_mode:
 		_release_all()
 		layout = want
+		arrow_mode = am
 		tilt_base = Input.get_accelerometer()
 		relayout()
+	if fling_v != 0.0:
+		_fling(delta)
 	var target := 1.0 if active else 0.0
 	if not is_equal_approx(alpha, target):
 		alpha = move_toward(alpha, target, delta * 4.0)
@@ -256,7 +273,14 @@ func _draw() -> void:
 	if alpha <= 0.0:
 		return
 	var a := alpha * (1.0 if in_bars else 0.6)
-	if in_bars and layout in ["lr", "ud", "hold", "mash", "tap", "arrows"]:
+	if layout == "lr" and Game.touch_running:
+		# the half of the screen being held lights faintly
+		var win := get_viewport_rect().size
+		for id in fingers.values():
+			if id == "zone:left" or id == "zone:right":
+				var x0 := 0.0 if id == "zone:left" else win.x / 2.0
+				draw_rect(Rect2(x0, 0, win.x / 2.0, win.y), Color(Pal.CANDLE, 0.08 * alpha))
+	if in_bars and _bar_buttons():
 		# show each bar zone that acts as a button; it lights while held
 		for c in controls:
 			if c.kind != "button":
@@ -283,8 +307,7 @@ func _draw() -> void:
 
 
 func _draw_joystick(a: float) -> void:
-	## The stick under your thumb while held; otherwise a faint ghost where it
-	## usually sits, so you know it's there.
+	## The stick under your thumb while held; nothing otherwise.
 	var base := Art.ui("t_joy_base")
 	var knob := Art.ui("t_joy_knob_on" if running else "t_joy_knob")
 	var bs := Vector2(joy_radius * 2.0, joy_radius * 2.0)
@@ -295,11 +318,6 @@ func _draw_joystick(a: float) -> void:
 		if running:
 			# a little dust ring while running
 			draw_arc(joy_origin, joy_radius * 1.08, 0, TAU, 40, Color(Pal.CREAM, 0.4 * a), maxf(1.0, ck * 0.75))
-	elif not joy_blocked:
-		var g := a * 0.3 * (1.0 - dialog_fade)
-		if g > 0.01:
-			draw_texture_rect(base, Rect2((joy_rest - bs / 2.0).round(), bs), false, Color(1, 1, 1, g))
-			draw_texture_rect(knob, Rect2((joy_rest - ks / 2.0).round(), ks), false, Color(1, 1, 1, g))
 
 
 # -------------------------------------------------------------------- input --
@@ -329,6 +347,7 @@ func _touch(e: InputEventScreenTouch) -> void:
 	if e.pressed:
 		_set_active(true)
 		_web_unlock()
+		fling_v = 0.0
 		var hit := _hit(e.position)
 		var win := get_viewport_rect().size
 		if hit.is_empty() and not joy_blocked and joy_finger < 0 and e.position.x < win.x * JOY_REGION:
@@ -341,6 +360,20 @@ func _touch(e: InputEventScreenTouch) -> void:
 			Game.buzz(6)
 			queue_redraw()
 			return
+		if hit.is_empty() and _swipe_zone():
+			# an arrow minigame: a swipe anywhere (bars too) is an arrow
+			fingers[e.index] = "swipe"
+			set_meta("start_%d" % e.index, e.position)
+			set_meta("swiped_%d" % e.index, false)
+			return
+		var zone := _zone_action(e.position)
+		if hit.is_empty() and zone != "":
+			# a minigame played by touching the screen (black bars included)
+			fingers[e.index] = "zone:" + zone
+			_press(zone)
+			Game.buzz(8)
+			queue_redraw()
+			return
 		if hit.is_empty() and _guarded(e.position):
 			# just beside a control (or on an empty bar): ignore it entirely
 			fingers[e.index] = "guard"
@@ -350,6 +383,13 @@ func _touch(e: InputEventScreenTouch) -> void:
 			fingers[e.index] = "game"
 			set_meta("start_%d" % e.index, e.position)
 			set_meta("swiped_%d" % e.index, false)
+			if _game_tap_allowed() and _scroll_target() != null:
+				# a scrolling list: wait for the release to tell a tap from a drag
+				set_meta("pending_%d" % e.index, true)
+				set_meta("scrolling_%d" % e.index, false)
+				set_meta("last_%d" % e.index, e.position)
+				scroll_v = 0.0
+				return
 			if _game_tap_allowed():
 				# menus and lists take the tap first; if one is open and the
 				# tap misses it, nothing happens (no accidental confirm)
@@ -377,12 +417,30 @@ func _touch(e: InputEventScreenTouch) -> void:
 			"joy":
 				_joy_release()
 			"game":
-				if get_meta("accept_%d" % e.index, false):
+				if get_meta("pending_%d" % e.index, false):
+					set_meta("pending_%d" % e.index, false)
+					if get_meta("scrolling_%d" % e.index, false):
+						# a flick keeps the list gliding; a drag that stopped doesn't
+						fling_v = scroll_v if Time.get_ticks_msec() / 1000.0 - scroll_t < 0.1 else 0.0
+					else:
+						var start: Vector2 = get_meta("start_%d" % e.index, e.position)
+						match _offer_tap(Game.shell.to_game(start)):
+							0:
+								_tap("accept")
+								Game.buzz(8)
+							1:
+								Game.buzz(8)
+				elif get_meta("accept_%d" % e.index, false):
 					set_meta("accept_%d" % e.index, false)
 					_release("accept")
 			"menu":
 				pass
+			"swipe":
+				# a flick too quick for any drag event still counts
+				_swipe(e.index, e.position)
 			_:
+				if id.begins_with("zone:"):
+					_release(id.substr(5))
 				for c in controls:
 					if c.id == id:
 						_release(c.action)
@@ -393,14 +451,66 @@ func _drag(e: InputEventScreenDrag) -> void:
 	var id: String = fingers.get(e.index, "")
 	if id == "joy":
 		_joy_move(e.position)
-	elif id == "game" and layout == "arrows" and not get_meta("swiped_%d" % e.index, true):
-		# swipe anywhere on the game in the arrow direction
-		var v: Vector2 = e.position - get_meta("start_%d" % e.index, e.position)
-		if v.length() > get_viewport_rect().size.y * SWIPE:
-			set_meta("swiped_%d" % e.index, true)
-			var d := ("right" if v.x > 0 else "left") if absf(v.x) > absf(v.y) else ("down" if v.y > 0 else "up")
-			_tap(d)
-			Game.buzz(8)
+	elif id == "game" and get_meta("pending_%d" % e.index, false):
+		_scroll_drag(e)
+	elif id == "swipe":
+		_swipe(e.index, e.position)
+
+
+func _swipe(index: int, p: Vector2) -> void:
+	## Once a finger has travelled far enough, taps the arrow it moved
+	## toward (one arrow per touch).
+	if get_meta("swiped_%d" % index, true):
+		return
+	var v: Vector2 = p - get_meta("start_%d" % index, p)
+	if v.length() > get_viewport_rect().size.y * SWIPE:
+		set_meta("swiped_%d" % index, true)
+		var d := ("right" if v.x > 0 else "left") if absf(v.x) > absf(v.y) else ("down" if v.y > 0 else "up")
+		_tap(d)
+		Game.buzz(8)
+
+
+func _scroll_target() -> Node:
+	## The list a vertical drag should scroll (a tap target with scroll_by), if any.
+	for n in get_tree().get_nodes_in_group("tap_targets"):
+		if is_instance_valid(n) and n.is_inside_tree() and n.has_method("scroll_by") and (not n is CanvasItem or n.is_visible_in_tree()):
+			return n
+	return null
+
+
+func _scroll_drag(e: InputEventScreenDrag) -> void:
+	var k := maxf(0.001, Game.shell.game_scale)
+	if not get_meta("scrolling_%d" % e.index, false):
+		var start: Vector2 = get_meta("start_%d" % e.index, e.position)
+		if absf(e.position.y - start.y) / k < SCROLL_START:
+			return
+		set_meta("scrolling_%d" % e.index, true)
+	var last: Vector2 = get_meta("last_%d" % e.index, e.position)
+	set_meta("last_%d" % e.index, e.position)
+	# content follows the finger: dragging up scrolls further down the list
+	var dy := -(e.position.y - last.y) / k
+	var tgt := _scroll_target()
+	if tgt == null:
+		return
+	tgt.scroll_by(dy)
+	var now := Time.get_ticks_msec() / 1000.0
+	var dt := now - scroll_t
+	scroll_t = now
+	if dt > 0.0 and dt < 0.1:
+		scroll_v = lerpf(scroll_v, dy / dt, 0.5)
+	else:
+		scroll_v = 0.0
+
+
+func _fling(delta: float) -> void:
+	var tgt := _scroll_target()
+	if tgt == null:
+		fling_v = 0.0
+		return
+	tgt.scroll_by(fling_v * delta)
+	fling_v *= pow(FLING_DECAY, delta)
+	if absf(fling_v) < 8.0:
+		fling_v = 0.0
 
 
 func _hit(p: Vector2) -> Dictionary:
@@ -448,7 +558,7 @@ func _field_control() -> bool:
 	if m == null or not is_instance_valid(m) or not m.in_story or m.dialog.visible:
 		return false
 	var w: World = m.world
-	if w == null or not is_instance_valid(w) or not w.visible or w.busy or w.paused or not w.player.visible:
+	if w == null or not is_instance_valid(w) or not w.visible or w.busy or not w.player.visible:
 		return false
 	if m.battle_layer.get_child_count() > 0:
 		return false
@@ -522,10 +632,31 @@ static func confirm() -> void:
 		Game.shell.touch._tap("accept")
 
 
+func _zone_action(p: Vector2) -> String:
+	## While a touch-the-screen minigame is being played, the action a touch
+	## at p holds down: OK anywhere, or left/right by half of the screen.
+	if not Game.touch_running or _menu_up() or _dialog_open():
+		return ""
+	match layout:
+		"hold", "mash", "tap":
+			return "accept"
+		"lr":
+			return "left" if p.x < get_viewport_rect().size.x / 2.0 else "right"
+	return ""
+
+
+func _swipe_zone() -> bool:
+	## While an arrow minigame is being played (and swiping is on), touches
+	## anywhere but on a button are swipes.
+	return layout == "arrows" and arrow_mode != 1 and Game.touch_running and not _menu_up() and not _dialog_open()
+
+
 func _game_tap_allowed() -> bool:
 	## Tapping the picture presses OK, except while a minigame is being played
-	## (stray taps would count as inputs), unless it's a tap-to-play minigame.
-	return not Game.touch_running or layout == "tap" or _menu_up() or _dialog_open()
+	## (stray taps would count as inputs), unless it's a tap-to-play minigame
+	## or one steered with the stick (the loot grab has no A button: a tap
+	## away from the stick is OK).
+	return not Game.touch_running or layout in ["tap", "pad"] or _menu_up() or _dialog_open()
 
 
 func _joy_move(p: Vector2) -> void:
@@ -581,7 +712,7 @@ func _pause() -> void:
 	if m == null:
 		return
 	var w: World = m.world
-	if w and is_instance_valid(w) and w.visible and not w.busy and not w.paused and not m.dialog.visible and m.in_story:
+	if w and is_instance_valid(w) and w.visible and not w.busy and not m.dialog.visible and m.in_story:
 		w.run(m.field_menu)
 	else:
 		_tap("cancel")

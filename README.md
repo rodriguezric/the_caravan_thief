@@ -26,6 +26,9 @@ godot --path .                  # the game: company card -> opening -> title
 ./run_scene S6                  # jump straight into a scene (nothing is saved)
 ./faces                         # character / expression viewer
 ./faces mara worried "A line."  # start on a character and mood, with your own line
+./export_web                    # web build into exports/
+./export_android                # debug APK into exports/android/ (add --install to adb it)
+./export_android release        # release APK; needs GODOT_ANDROID_KEYSTORE_RELEASE_* set
 ```
 
 **Face viewer** (`tools/face_viewer.gd`): every character, every mood, at the sizes
@@ -51,7 +54,11 @@ Same scheme as Pumpkin Man:
 | Skip lines you've already read | hold Shift in dialog | hold X |
 
 Touch works too (the shell and `scripts/touch_controls.gd` are shared with Pumpkin Man):
-a floating stick on the left, A/B/Menu buttons, tap menus directly, tap the picture to advance.
+a stick that appears under your thumb on the left (push far to run), B and Menu buttons
+(no A: tap the picture to talk, examine or advance), tap menus directly, and drag or flick
+long lists (Settings, Records, Achievements, Items, Skills) to scroll them. Lockpick is
+played by tapping anywhere and Pickpocket by holding anywhere, the black side bars included;
+in Loot, the stick picks and a tap elsewhere grabs.
 
 ## Screens
 

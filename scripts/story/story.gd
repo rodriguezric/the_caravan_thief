@@ -13,6 +13,9 @@ extends Node
 var part: StoryPart
 var acts := {}
 var _jump := ""
+## True while until() lets the player roam: the World's lock watchdog only
+## acts then (any lock left over at that point has leaked).
+var roaming := false
 
 
 var m: Node:
@@ -414,7 +417,10 @@ func shake(amt: float = 2.0, t: float = 0.5) -> void:
 
 func lock(on: bool) -> void:
 	if w:
-		w.busy = on
+		if on:
+			w.hold("story")
+		else:
+			w.release("story")
 
 
 func marker(tile: Vector2i) -> void:
@@ -446,7 +452,11 @@ func explore(map_def: Dictionary, tile: Vector2i, dir: int = 0) -> World:
 	m.load_map(map_def, tile, dir)
 	if Game.run.get("mark", "") != "" and Game.flag("has_sword"):
 		w.player.set_spec(rook_spec())
+	# no walking while the map fades in: a key still held from the last
+	# screen would move Rook before the scene can stage anyone
+	w.hold("fade")
 	await m.fade_in(0.35)
+	w.release("fade")
 	if map_def.has("name"):
 		w.show_area_name()
 	return w
@@ -456,18 +466,27 @@ func until(cond: Callable) -> void:
 	## Lets the player roam until the condition holds (set by event handlers).
 	## Automated runs let the act take its canonical next step instead.
 	var idle := 0
+	if w and w.locks.has("story"):
+		# every act unlocks before roaming; a lock left on here leaked
+		push_warning("Story: until() reached with the story lock still held; releasing it")
+		w.release("story")
+	roaming = true
 	while not cond.call():
 		await m.get_tree().process_frame
 		if Game.autoplay() and is_instance_valid(w) and not w.busy and part:
 			idle += 1
 			if idle > 20:
 				idle = 0
-				w.busy = true
+				# not through w.run(): the act may free this world mid-step
+				var aw := w
+				aw.hold("autoplay")
 				await part.autoplay()
-				if is_instance_valid(w):
-					w.busy = false
+				if is_instance_valid(aw):
+					aw.release("autoplay")
+	# let the event that set the condition finish before the script moves on
 	while is_instance_valid(w) and w.busy:
 		await m.get_tree().process_frame
+	roaming = false
 
 
 # ------------------------------------------------------------- vignettes ---

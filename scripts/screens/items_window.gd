@@ -19,6 +19,10 @@ var tabs: Array = []
 var list_body: Control
 var detail_body: Control
 var cursor: ColorRect
+## The first row shown; keys keep the cursor inside the view, a finger
+## drags it (scroll_acc holds the part of a row dragged so far).
+var top := 0
+var scroll_acc := 0.0
 
 
 func _init() -> void:
@@ -106,7 +110,25 @@ static func info(id: String) -> Dictionary:
 
 
 func _top() -> int:
-	return clampi(index - ROWS + 1, 0, maxi(0, ids.size() - ROWS))
+	top = clampi(top, maxi(0, index - ROWS + 1), index)
+	top = clampi(top, 0, maxi(0, ids.size() - ROWS))
+	return top
+
+
+func scroll_by(dy: float) -> void:
+	## Touch drag: slide the list a row at a time; the cursor stays on screen.
+	scroll_acc += dy
+	var steps := int(scroll_acc / ROW_H)
+	if steps == 0:
+		return
+	scroll_acc -= steps * ROW_H
+	var to := clampi(top + steps, 0, maxi(0, ids.size() - ROWS))
+	if to == top:
+		scroll_acc = 0.0
+		return
+	top = to
+	index = clampi(index, top, top + ROWS - 1)
+	_fill()
 
 
 func _fill() -> void:
@@ -120,7 +142,7 @@ func _fill() -> void:
 		var l := Art.label("Nothing.", Pal.TEXT_DIM)
 		l.position = Vector2(4, 2)
 		list_body.add_child(l)
-	var top := _top()
+	_top()
 	for i in range(top, mini(top + ROWS, ids.size())):
 		var id: String = ids[i]
 		var y := (i - top) * ROW_H
@@ -211,6 +233,7 @@ func _switch(c: int) -> void:
 	if c != cat:
 		cat = c
 		index = 0
+		top = 0
 		Sfx.play("blip")
 		_fill()
 

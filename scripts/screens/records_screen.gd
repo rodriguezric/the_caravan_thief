@@ -8,6 +8,10 @@ const PAGES := ["SUMMARY", "THIEVERY"]
 var page := 0
 var body: Control
 var tabs: Array = []
+var scroll := 0.0
+var content_h := 0.0
+## Room inside the panel for the page body.
+const VIEW_H := 130.0
 
 
 func _init() -> void:
@@ -33,11 +37,12 @@ func _init() -> void:
 	var panel := Art.make_box("box")
 	panel.position = Vector2(6, 24)
 	panel.size = Vector2(308, 138)
+	panel.clip_contents = true
 	add_child(panel)
 	body = Control.new()
 	body.position = Vector2(10, 4)
 	panel.add_child(body)
-	var keys := Art.shadow_label("Left/Right page   X back", Pal.TEXT_DIM)
+	var keys := Art.shadow_label("Left/Right page   Up/Down scroll   X back", Pal.TEXT_DIM)
 	keys.position = Vector2(6, 166)
 	add_child(keys)
 	_fill()
@@ -56,6 +61,12 @@ func tap(p: Vector2) -> bool:
 	return false
 
 
+func scroll_by(dy: float) -> void:
+	## Touch drag: slide a page that's taller than the panel.
+	scroll = clampf(scroll + dy, 0.0, maxf(0.0, content_h - VIEW_H))
+	body.position.y = 4 - roundf(scroll)
+
+
 func _row(y: float, label: String, value: String, col: Color = Pal.TEXT) -> void:
 	var l := Art.label(label, Pal.TEXT_DIM)
 	l.position = Vector2(0, y)
@@ -67,6 +78,7 @@ func _row(y: float, label: String, value: String, col: Color = Pal.TEXT) -> void
 
 func _fill() -> void:
 	for c in body.get_children():
+		body.remove_child(c)
 		c.queue_free()
 	var r: Dictionary = Game.profile.records
 	for i in tabs.size():
@@ -95,6 +107,11 @@ func _fill() -> void:
 			_row(36, "Best lock (100 is clean)", str(Game.best("lockpick")) if Game.best("lockpick") > 0 else "-", Pal.LEMON)
 			_row(48, "Best lift (100 is clean)", str(Game.best("pickpocket")) if Game.best("pickpocket") > 0 else "-", Pal.LEMON)
 			_row(60, "Heaviest haul", str(Game.best("loot")) if Game.best("loot") > 0 else "-", Pal.LEMON)
+	content_h = 0.0
+	for c in body.get_children():
+		content_h = maxf(content_h, (c as Control).position.y + 12)
+	scroll = 0.0
+	body.position.y = 4
 
 
 func run() -> void:
@@ -104,6 +121,10 @@ func run() -> void:
 		if Input.is_action_just_pressed("cancel"):
 			Sfx.play("cancel")
 			return
+		if Input.is_action_pressed("down"):
+			scroll_by(90.0 * get_process_delta_time())
+		elif Input.is_action_pressed("up"):
+			scroll_by(-90.0 * get_process_delta_time())
 		var old := page
 		if Input.is_action_just_pressed("right"):
 			page = (page + 1) % PAGES.size()

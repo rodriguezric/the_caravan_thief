@@ -11,6 +11,8 @@ extends Node
 ##                    Load Game and New Game's slot lists (needs CT_DIR)
 ##   minigame:<kind>  one minigame (real logic, random presses)
 ##   cine:<name>      a backdrop, screenshot
+##   touch            by touch: the field layout, the lock watchdog, drag
+##                    scrolling in Settings/Achievements, a tap-the-screen minigame
 
 var out := ""
 var main: Node
@@ -314,6 +316,9 @@ func _run(scenario: String) -> void:
 			await wait(0.3)
 			await shot("pause_log")
 			get_tree().quit()
+		"touch":
+			await _touch_test()
+			get_tree().quit()
 		"balance":
 			# each key fight several times with a sensible autopilot
 			var cases := [
@@ -360,3 +365,139 @@ func _run(scenario: String) -> void:
 		_:
 			print("[auto] unknown scenario ", scenario)
 			get_tree().quit()
+
+
+func _finger(pos: Vector2, pressed: bool, index: int = 0) -> void:
+	var e := InputEventScreenTouch.new()
+	e.index = index
+	e.position = pos
+	e.pressed = pressed
+	Input.parse_input_event(e)
+
+
+func _drag_to(pos: Vector2, index: int = 0) -> void:
+	var e := InputEventScreenDrag.new()
+	e.index = index
+	e.position = pos
+	Input.parse_input_event(e)
+
+
+func _to_window(p: Vector2) -> Vector2:
+	return Game.shell.game_rect.position + p * Game.shell.game_scale
+
+
+func _swipe(from: Vector2, to: Vector2, steps: int = 8) -> void:
+	## A finger drag in game pixels, then let go.
+	_finger(_to_window(from), true)
+	await get_tree().process_frame
+	for i in steps:
+		_drag_to(_to_window(from.lerp(to, (i + 1) / float(steps))))
+		await get_tree().process_frame
+	_finger(_to_window(to), false)
+	await wait(0.4)
+
+
+func _touch_test() -> void:
+	var sh: Shell = Game.shell
+	Game.new_run()
+	_preset()
+	Game.run.scene = "S5"
+	var act: Node = main.story.acts.act2
+	main.story.part = act
+	main.load_map(act.kesh_map(), Vector2i(10, 9), 0)
+	main.fade_rect.color.a = 0.0
+	main.in_story = true
+	await wait(0.4)
+	# a thumb on the stick turns touch on; let go and the stick is gone
+	_finger(_to_window(Vector2(40, 120)), true)
+	await wait(0.2)
+	_finger(_to_window(Vector2(40, 120)), false)
+	await wait(0.8)
+	print("[auto] touch on: ", Game.touch_active, " controls: ", sh.touch.controls.map(func(c): return c.id))
+	await shot("touch_field")
+	# the watchdog: a leaked lock while roaming frees Rook after a few seconds
+	var w: World = main.world
+	main.story.roaming = true
+	w.hold("event")
+	await wait(World.STUCK_LIMIT + 0.6)
+	print("[auto] leaked lock after %.0fs: %s (busy=%s)" % [World.STUCK_LIMIT + 0.6, w.locks.keys(), w.busy])
+	w.hold("menu")
+	await wait(World.STUCK_LIMIT + 0.6)
+	print("[auto] menu lock (explained) kept: ", w.locks.keys())
+	w.release("menu")
+	main.story.roaming = false
+	# drag scrolling
+	var ss := SettingsScreen.new()
+	main.cine_layer.add_child(ss)
+	await wait(0.4)
+	var sel0 := ss.sel
+	await _swipe(Vector2(150, 140), Vector2(150, 50))
+	print("[auto] settings: dragged up -> scroll %.0f of %.0f, sel %d -> %d" % [ss.scroll, ss._max_scroll(), sel0, ss.sel])
+	await shot("touch_settings_scrolled")
+	await _swipe(Vector2(150, 50), Vector2(150, 160))
+	print("[auto] settings: dragged back -> scroll %.0f" % ss.scroll)
+	ss.queue_free()
+	var acs := AchievementsScreen.new()
+	main.cine_layer.add_child(acs)
+	await wait(0.4)
+	await _swipe(Vector2(150, 130), Vector2(150, 50))
+	await wait(0.6)
+	print("[auto] achievements: dragged up -> scroll %.0f" % acs.scroll)
+	await shot("touch_achievements_scrolled")
+	acs.queue_free()
+	# items: a tap on a row still picks it
+	Game.run.items = ["ledger", "map", "poster", "letter"]
+	var iw := ItemsWindow.new()
+	main.cine_layer.add_child(iw)
+	iw.cat = 2
+	iw._fill()
+	await wait(0.3)
+	var row := ItemsWindow.LIST.position + Vector2(30, 4 + 2 * ItemsWindow.ROW_H + 6)
+	_finger(_to_window(row), true)
+	await get_tree().process_frame
+	_finger(_to_window(row), false)
+	await wait(0.3)
+	print("[auto] items: tapped row 3 -> index ", iw.index)
+	await _swipe(row, row + Vector2(0, -40))
+	print("[auto] items: short list ignores a drag -> top ", iw.top, " index ", iw.index)
+	iw.queue_free()
+	# a tap-the-screen minigame: the title card, and a touch on the black bar
+	main.clear_world()
+	main.in_story = false
+	main.minigame("lockpick")
+	await wait(0.8)   # (test runs skip the card after 0.6s of the game)
+	await shot("touch_lockpick_card")
+	print("[auto] lockpick layout: ", sh.touch.layout, " controls: ", sh.touch.controls.map(func(c): return c.id))
+	var bar := Vector2(sh.game_rect.position.x * 0.5, sh.game_rect.get_center().y)
+	_finger(bar, true)
+	await get_tree().process_frame
+	_finger(bar, false)
+	await wait(4.0)
+	print("[auto] playing: ", Game.touch_running)
+	_finger(bar, true, 1)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	print("[auto] touch on the side bar holds OK: ", Input.is_action_pressed("accept"))
+	await shot("touch_lockpick_play")
+	_finger(bar, false, 1)
+	await wait(0.3)
+	await wait(6.0)
+	# the loot grab: stick on the left, a tap anywhere else grabs
+	var done := [false]
+	var run_loot := func():
+		await main.minigame("loot", {"time": 30.0})
+		done[0] = true
+	run_loot.call()
+	await wait(3.0)
+	var lg: Array = main.cine_layer.find_children("*", "MgLoot", true, false)
+	if lg.is_empty():
+		print("[auto] loot: no game found")
+		return
+	var right := _to_window(Vector2(250, 90))
+	_finger(right, true)
+	await get_tree().process_frame
+	_finger(right, false)
+	await wait(0.3)
+	print("[auto] loot: tapped the picture -> taken ", lg[0].taken)
+	await shot("touch_loot")
+

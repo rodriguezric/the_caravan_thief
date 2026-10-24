@@ -1,0 +1,42 @@
+#!/bin/bash
+# Build the Android APK into exports/android/ with the "Android" export preset.
+#   ./export_android                 debug APK, signed with the debug keystore
+#   ./export_android release         release APK, signed with your release keystore:
+#       GODOT_ANDROID_KEYSTORE_RELEASE_PATH=~/keys/caravan.keystore \
+#       GODOT_ANDROID_KEYSTORE_RELEASE_USER=<alias> \
+#       GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=<password> ./export_android release
+#   ./export_android [release] --install   also install it on the phone over adb
+# Needs the Android export templates and the SDK / JDK paths set in Godot's
+# Editor Settings (Export > Android); the debug keystore is ~/.android/debug.keystore.
+cd "$(dirname "$0")"
+mode=debug
+install=0
+for a in "$@"; do
+	case "$a" in
+		release) mode=release ;;
+		debug) mode=debug ;;
+		--install) install=1 ;;
+		*) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 1 ;;
+	esac
+done
+if [ ! -f export_presets.cfg ] || ! grep -q '^name="Android"' export_presets.cfg; then
+	echo "No \"Android\" preset in export_presets.cfg: add one in Project > Export." >&2
+	exit 1
+fi
+if [ "$mode" = release ] && [ -z "$GODOT_ANDROID_KEYSTORE_RELEASE_PATH" ]; then
+	echo "Release builds need GODOT_ANDROID_KEYSTORE_RELEASE_PATH, _USER and _PASSWORD (see ./export_android help)." >&2
+	exit 1
+fi
+version=$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)
+out="exports/android/the_caravan_thief-$version-$mode.apk"
+mkdir -p exports/android
+godot --headless --export-$mode "Android" "$out" || exit 1
+if [ ! -f "$out" ]; then
+	echo "Export failed: no APK written (check the templates and Editor Settings > Export > Android)." >&2
+	exit 1
+fi
+echo "Built $out"
+if [ $install = 1 ]; then
+	adb=$(command -v adb || echo "$ANDROID_HOME/platform-tools/adb")
+	"$adb" install -r "$out"
+fi

@@ -23,9 +23,21 @@ var npcs: Array = []
 var by_id := {}
 var props := {}
 var cam: Camera2D
-var busy := false
+## Who is keeping the player still, by reason ("event", "story", "fade",
+## "menu", "battle", "minigame", "autoplay"). Each owner holds and releases
+## only its own reason, so overlapping owners can't undo each other.
+var locks := {}
+var busy: bool:
+	get:
+		return not locks.is_empty()
 var _event_end_frame := -10
-var paused := false
+## How long the player has been locked while nothing on screen explains it.
+var _stuck_t := 0.0
+## Locks owned by code that always awaits its own release (never leaked).
+const SCOPED_LOCKS := ["fade", "menu", "battle", "minigame"]
+## A lock with no visible reason this long, while the story says the player
+## should be roaming, is a leak: the watchdog frees the player.
+const STUCK_LIMIT := 4.0
 var animated: Array = []
 var hud: CanvasLayer
 var tint: CanvasModulate
@@ -312,10 +324,14 @@ func _process(delta: float) -> void:
 	if is_equal_approx(cam.zoom.x, 1.0):
 		cam.position = cam.position.round()
 	_update_hint()
-	if busy or paused or Game.main.dialog.visible or not player.visible:
+	if busy or Game.main.dialog.visible or not player.visible:
+		_watch_locks(delta)
 		if not player.scripted:
 			player.moving = false
 		return
+	_stuck_t = 0.0
+	if _solid_corners(player.position) > 0:
+		_unstick()
 	var v := Input.get_vector("left", "right", "up", "down")
 	if v.length() > 0.2:
 		var d: int
@@ -365,11 +381,8 @@ func _try_move(d: Vector2) -> void:
 
 
 func blocked(p: Vector2, who: Node2D) -> bool:
-	for c in [Vector2(-5, -5), Vector2(5, -5), Vector2(-5, -1), Vector2(5, -1)]:
-		var q: Vector2 = p + c
-		var t := Vector2i(floori(q.x / TILE), floori(q.y / TILE))
-		if t.x < 0 or t.y < 0 or t.x >= tw or t.y >= th or solid.has(t):
-			return true
+	if _solid_corners(p) > 0:
+		return true
 	for n: Actor in npcs:
 		if n == who or not n.visible or n.info.get("ghost", false):
 			continue
@@ -378,6 +391,43 @@ func blocked(p: Vector2, who: Node2D) -> bool:
 	if who != player and player.visible and absf(player.position.x - p.x) < 11 and absf(player.position.y - p.y) < 7:
 		return true
 	return false
+
+
+func _solid_corners(p: Vector2) -> int:
+	## How many corners of a body's feet at p sit in a wall (or off the map).
+	var n := 0
+	for c in [Vector2(-5, -5), Vector2(5, -5), Vector2(-5, -1), Vector2(5, -1)]:
+		var q: Vector2 = p + c
+		var t := Vector2i(floori(q.x / TILE), floori(q.y / TILE))
+		if t.x < 0 or t.y < 0 or t.x >= tw or t.y >= th or solid.has(t):
+			n += 1
+	return n
+
+
+func _unstick() -> void:
+	## Rook is inside a wall (a scripted walk, placement or spawn left him
+	## there), where every step would be refused: pop him to the nearest
+	## free tile.
+	var here := tile_of(player.position)
+	var best := player.position
+	var bd := INF
+	for r in 8:
+		for y in range(here.y - r, here.y + r + 1):
+			for x in range(here.x - r, here.x + r + 1):
+				if maxi(absi(x - here.x), absi(y - here.y)) != r:
+					continue
+				var c := tile_center(Vector2i(x, y))
+				if blocked(c, player):
+					continue
+				var dd := c.distance_squared_to(player.position)
+				if dd < bd:
+					bd = dd
+					best = c
+		if bd < INF:
+			break
+	if bd < INF:
+		push_warning("World %s: player was inside a wall at %s, moved to %s" % [def.get("id", "?"), player.position, best])
+		player.position = best
 
 
 func _after_step() -> void:
@@ -398,20 +448,65 @@ func run(co: Callable) -> void:
 	## Runs an async event with player control locked until it finishes.
 	if busy:
 		return
-	busy = true
-	if not player.scripted:
-		player.moving = false
+	hold("event")
 	await co.call()
 	if is_instance_valid(self):
-		busy = false
+		release("event")
 		_event_end_frame = Engine.get_process_frames()
+
+
+func hold(reason: String) -> void:
+	## Keeps the player still until release(reason). Holding twice is fine.
+	locks[reason] = true
+	if player and not player.scripted:
+		player.moving = false
+
+
+func release(reason: String) -> void:
+	locks.erase(reason)
+
+
+func _watch_locks(delta: float) -> void:
+	## Safety net: while the story has handed the player control (roaming),
+	## a lock that outlives everything on screen that could explain it has
+	## leaked. Say who held it and free the player.
+	if locks.is_empty() or not handler or not handler.get("roaming") or _lock_explained():
+		_stuck_t = 0.0
+		return
+	_stuck_t += delta
+	if _stuck_t >= STUCK_LIMIT:
+		push_warning("World %s: player locked %.0fs with nothing happening; releasing %s" % [def.get("id", "?"), STUCK_LIMIT, locks.keys()])
+		locks.clear()
+		_stuck_t = 0.0
+
+
+func _lock_explained() -> bool:
+	## Whether something is visibly going on that should keep the player still.
+	for r in SCOPED_LOCKS:
+		if locks.has(r):
+			return true
+	var m: Node = Game.main
+	if m.dialog.visible or m.fade_rect.color.a > 0.5 or cam_shot or player.scripted:
+		return true
+	if m.battle_layer.get_child_count() > 0:
+		return true
+	for c in m.cine_layer.get_children():
+		if c is Cinema or c is Minigame:
+			return true
+	for n in get_tree().get_nodes_in_group("tap_targets"):
+		if is_instance_valid(n) and n.is_inside_tree() and (not n is CanvasItem or n.is_visible_in_tree()):
+			return true
+	for n: Actor in npcs:
+		if n.scripted:
+			return true
+	return false
 
 
 func _update_npcs(delta: float) -> void:
 	for n: Actor in npcs:
 		if n.scripted or n.info.has("patrol"):
 			continue
-		if not n.info.get("wander", false) or busy or paused:
+		if not n.info.get("wander", false) or busy:
 			if n.walk_target == null:
 				n.moving = false
 			continue
@@ -482,7 +577,7 @@ func _update_guards(delta: float) -> void:
 		if not is_instance_valid(a) or not a.visible:
 			continue
 		var cone: Sprite2D = g.cone
-		if not busy and not paused and not Game.main.dialog.visible and not a.scripted:
+		if not busy and not Game.main.dialog.visible and not a.scripted:
 			if g.wait > 0.0:
 				g.wait -= delta
 				a.moving = false
@@ -502,7 +597,7 @@ func _update_guards(delta: float) -> void:
 		var fwd: Vector2 = Actor.DIRS[a.dir]
 		cone.position = a.position + Vector2(0, -8) + fwd * 4
 		cone.rotation = fwd.angle()
-		if _sees(a, fwd, g.r) and player.visible and not busy and not paused:
+		if _sees(a, fwd, g.r) and player.visible and not busy:
 			seen = true
 	if seen:
 		alert = minf(1.0, alert + delta * 1.6)
@@ -587,7 +682,7 @@ func _target_in_front() -> Variant:
 
 func _update_hint() -> void:
 	## A small "!" over Rook's head when there's something to talk to or look at.
-	var show: bool = player.visible and not busy and not paused and not Game.main.dialog.visible
+	var show: bool = player.visible and not busy and not Game.main.dialog.visible
 	if show:
 		var tgt = _target_in_front()
 		show = tgt != null and not (tgt is Dictionary and tgt.get("quiet", false))

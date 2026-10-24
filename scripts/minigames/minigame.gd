@@ -24,6 +24,9 @@ var keep_song := false
 var touch_layout := ""
 var touch_tilt := ""
 const TOUCH := {"lockpick": ["tap", ""], "pickpocket": ["hold", ""], "loot": ["pad", ""]}
+## What the title card says instead of keys_text when playing by touch, for
+## the layouts that are played by touching the screen itself.
+const TOUCH_KEYS := {"tap": "Tap the screen", "hold": "Hold the screen", "mash": "Tap fast!", "lr": "Touch left/right side"}
 
 
 static func create(kind: String, p_opts: Dictionary = {}) -> Minigame:
@@ -133,6 +136,8 @@ func _title_card() -> void:
 		box.add_child(l)
 		y += 10
 	var k := Art.label(keys_text + "      Z start", Pal.TEXT_DIM)
+	if Game.touch_active and TOUCH_KEYS.has(touch_layout):
+		k.text = TOUCH_KEYS[touch_layout] + "      Tap to start"
 	k.position = Vector2(120 - Art.text_width(k.text) / 2.0, y + 4)
 	box.add_child(k)
 	box.pivot_offset = box.size / 2.0

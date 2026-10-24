@@ -16,6 +16,10 @@ var cursor: TextureRect
 var note: Label
 var panel: NinePatchRect
 var confirm_open := false
+## How far the rows have scrolled, in pixels (keys follow the selection,
+## touch drags it freely).
+var scroll := 0.0
+const VIEW_H := 128.0
 
 
 func _init() -> void:
@@ -89,14 +93,30 @@ func _init() -> void:
 	note.position = Vector2(6, 166)
 	add_child(note)
 	sel = 1
+	_follow_sel()
 	_refresh()
 	add_to_group("tap_targets")
 
 
 func _row_y(i: int) -> float:
-	## Rows scroll so the selection stays inside the panel.
-	var first := clampi(sel - 6, 0, maxi(0, rows.size() - 12))
-	return 4 + (i - first) * 10
+	return 4 + i * 10 - roundf(scroll)
+
+
+func _max_scroll() -> float:
+	return maxf(0.0, rows.size() * 10 + 4 - VIEW_H)
+
+
+func _follow_sel() -> void:
+	## Keys: scroll so the selection sits about mid-panel, as far as rows allow.
+	scroll = clampf((sel - 6) * 10.0, 0.0, _max_scroll())
+
+
+func scroll_by(dy: float) -> void:
+	## Touch drag: slide the rows with the finger.
+	if confirm_open:
+		return
+	scroll = clampf(scroll + dy, 0.0, _max_scroll())
+	_refresh()
 
 
 func _refresh() -> void:
@@ -105,7 +125,7 @@ func _refresh() -> void:
 		var y := _row_y(i)
 		var l: Label = labels[i]
 		l.position.y = y
-		l.visible = y >= 0 and y < 128
+		l.visible = y > -10 and y < VIEW_H + 4
 		var v: Label = values[i]
 		v.position = Vector2(180, y)
 		v.visible = l.visible
@@ -128,6 +148,7 @@ func _refresh() -> void:
 			_:
 				v.text = ""
 	cursor.position = Vector2(4 - (1 if fmod(t, 0.5) < 0.25 else 0), _row_y(sel))
+	cursor.visible = (labels[sel] as Label).visible
 
 
 func tap(p: Vector2) -> bool:
@@ -224,6 +245,7 @@ func run() -> void:
 			_refresh()
 		if old != sel:
 			Sfx.play("blip")
+			_follow_sel()
 			_refresh()
 
 

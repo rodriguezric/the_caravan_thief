@@ -187,6 +187,14 @@ func tap(p: Vector2) -> bool:
 	return false
 
 
+func scroll_by(dy: float) -> void:
+	## Touch drag: move the grid with the finger, within its rows.
+	var rows := ceili(list.size() / float(COLS))
+	var most := maxf(0.0, rows * (CARD.y + GAP) - GAP + 6 - GRID_H)
+	scroll_to = clampf(scroll_to + dy, 0.0, most)
+	scroll = scroll_to
+
+
 func _process(delta: float) -> void:
 	t += delta
 	scroll = lerpf(scroll, scroll_to, minf(1.0, delta * 12.0))

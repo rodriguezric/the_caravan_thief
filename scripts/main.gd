@@ -300,7 +300,7 @@ func wipe_out() -> void:
 func battle(def: Dictionary) -> Dictionary:
 	## Runs a battle to its results screen. Returns the summary.
 	if world:
-		world.paused = true
+		world.hold("battle")
 	var prev_song := Sfx.current_song
 	Sfx.play("sword_draw" if Game.flag("has_sword") else "slash", 1.0, -6.0)
 	flash(Pal.WHITE, 0.15, 0.6)
@@ -321,7 +321,7 @@ func battle(def: Dictionary) -> Dictionary:
 	Game.record_battle(summary)
 	if world:
 		world.visible = true
-		world.paused = false
+		world.release("battle")
 	if prev_song != "" and not def.get("keep_music", false):
 		Sfx.music(prev_song, 0.8)
 	if not def.get("stay_dark", false):
@@ -332,7 +332,7 @@ func battle(def: Dictionary) -> Dictionary:
 func minigame(kind: String, opts: Dictionary = {}) -> Dictionary:
 	## Runs one minigame full-screen. Returns its result.
 	if world:
-		world.paused = true
+		world.hold("minigame")
 	var prev_song := Sfx.current_song
 	await fade_out(0.3)
 	_drop_cinemas()
@@ -343,7 +343,7 @@ func minigame(kind: String, opts: Dictionary = {}) -> Dictionary:
 	await fade_out(0.3)
 	g.queue_free()
 	if world:
-		world.paused = false
+		world.release("minigame")
 	if prev_song != "" and not opts.get("keep_music", false):
 		Sfx.music(prev_song, 0.8)
 	if not opts.get("stay_dark", false):
@@ -482,7 +482,7 @@ func _show_toasts() -> void:
 # ------------------------------------------------------------- pause menu --
 
 func field_menu() -> void:
-	world.paused = true
+	world.hold("menu")
 	Sfx.play("confirm")
 	var p := PauseMenu.new()
 	ui.add_child(p)
@@ -494,4 +494,4 @@ func field_menu() -> void:
 		story.abort()
 		return
 	if is_instance_valid(world):
-		world.paused = false
+		world.release("menu")

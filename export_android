@@ -40,3 +40,5 @@ if [ $install = 1 ]; then
 	adb=$(command -v adb || echo "$ANDROID_HOME/platform-tools/adb")
 	"$adb" install -r "$out"
 fi
+
+scp exports/android/*.apk rohins@rohins.com:/home/rohins/web/sites/rodriguezric.com/apks

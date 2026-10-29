@@ -1826,7 +1826,8 @@ func _talk(u: BattleUnit) -> Dictionary:
 	if avail.is_empty():
 		await msg("There's nothing left to say.", 0.8)
 		return {}
-	var texts := avail.map(func(o: Dictionary) -> String: return o.text)
+	# the menu shows the gist (label); the full line is what Rook then says
+	var texts := avail.map(func(o: Dictionary) -> String: return o.get("label", o.text))
 	texts.append("(Say nothing.)")
 	var r := await ask("What do you say?", texts)
 	if r >= avail.size():

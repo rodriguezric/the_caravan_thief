@@ -9,6 +9,7 @@ extends Node
 ##   shell            title, endings, settings, records, achievements
 ##   slots            save slots: the old single save moving into slot 1,
 ##                    Load Game and New Game's slot lists (needs CT_DIR)
+##   talk:<gate|factor>  that persuade fight; ACT > Talk opened and screenshot
 ##   minigame:<kind>  one minigame (real logic, random presses)
 ##   cine:<name>      a backdrop, screenshot
 ##   touch            by touch: the field layout, the lock watchdog, drag
@@ -107,6 +108,30 @@ func _run(scenario: String) -> void:
 		print("[auto] story done in %.1fs; endings: %s" % [(Time.get_ticks_msec() - t0) / 1000.0, ", ".join(Game.profile.endings.keys())])
 		print("[auto] vars: ", Game.profile.last_route.get("vars", {}), "  achievements: ", Game.achieved.size())
 		get_tree().quit()
+		return
+	if scenario.begins_with("talk:"):
+		Game.new_run()
+		Game.run.scene = "S11" if scenario == "talk:factor" else "S4"
+		Game.set_flag("has_sword")
+		Game.set_flag("found_door")
+		Game.set_flag("wick_captured")
+		Game.run.items.append("purse")
+		Game.run.lore.append_array(["factor_who", "factor_bearer", "factor_keep"])
+		Game.add("loyalty", 3)
+		var tdef: Dictionary = main.story.acts.act3._factor_battle() if scenario == "talk:factor" else main.story.acts.act2._gate_battle()
+		var peek := func() -> void:
+			await wait(4.0)
+			# Rook's commands: ATTACK SKILL / SWORD ITEM / GUARD ACT; Talk is second in ACT
+			for k in ["down", "down", "right", "accept", "down", "accept"]:
+				await tap(k, 0.5)
+			await wait(0.5)
+			await shot("talk_menu")
+			await tap("accept")
+			await wait(1.2)
+			await shot("talk_said")
+			get_tree().quit()
+		peek.call()
+		await main.battle(tdef)
 		return
 	if scenario.begins_with("battle:"):
 		var kind := scenario.substr(7)

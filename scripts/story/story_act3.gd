@@ -523,15 +523,15 @@ func _here(id: String) -> bool:
 
 func _factor_battle() -> Dictionary:
 	var talk := [
-		{"id": "bearer", "text": "\"You were a bearer once. You told me so.\"", "good": true, "need": func() -> bool: return Game.run.lore.has("factor_who"),
+		{"id": "bearer", "label": "You were a bearer.", "text": "\"You were a bearer once. You told me so.\"", "good": true, "need": func() -> bool: return Game.run.lore.has("factor_who"),
 			"reply": [["factor", "I was. A long time ago. I wanted to keep things.", "sad"]]},
-		{"id": "keep", "text": "\"What did you want to keep? Before all this?\"", "good": true, "worth": 1, "need": func() -> bool: return Game.lore_count() >= 2,
+		{"id": "keep", "label": "What did you want?", "text": "\"What did you want to keep? Before all this?\"", "good": true, "worth": 1, "need": func() -> bool: return Game.lore_count() >= 2,
 			"reply": [["factor", "...A house. A wife. A little girl who sang. I kept them so carefully that they left.", "sad"]]},
-		{"id": "door", "text": "\"There's a door in the Teeth. Let me close it.\"", "good": true, "worth": 2, "need": func() -> bool: return Game.flag("found_door"),
+		{"id": "door", "label": "Let me close the door.", "text": "\"There's a door in the Teeth. Let me close it.\"", "good": true, "worth": 2, "need": func() -> bool: return Game.flag("found_door"),
 			"reply": [["factor", "Close it? From which side, thief?", "shock"]]},
-		{"id": "wick", "text": "\"Let the boy go. He's not in your ledger.\"", "good": true, "need": func() -> bool: return Game.flag("wick_captured"),
+		{"id": "wick", "label": "Let the boy go.", "text": "\"Let the boy go. He's not in your ledger.\"", "good": true, "need": func() -> bool: return Game.flag("wick_captured"),
 			"reply": [["factor", "Everyone is in my ledger, eventually. But... very well.", ""]]},
-		{"id": "threat", "text": "\"I'll take your ledger next. Your name in it.\"", "good": false,
+		{"id": "threat", "label": "I'll take your ledger.", "text": "\"I'll take your ledger next. Your name in it.\"", "good": false,
 			"reply": [["factor", "My name was the first one in it.", "smile"]]},
 	]
 	return {

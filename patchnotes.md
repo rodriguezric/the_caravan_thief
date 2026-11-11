@@ -1,5 +1,24 @@
 # Patch Notes
 
+## 2026-11-11 11:21 EST — `bugfix_tower_top_carving_scene_on_ground` (v0.3.5)
+
+The S4 blade-carving scene ("The top of the tower...") now actually takes
+place on top of the Rookery instead of on the dirt at the tower's foot.
+
+- New tower-top backdrop: stone flagstones and a crenellated parapet in the
+  foreground, and beyond it the badlands laid out far below — hazy mesas on
+  the horizon, buttes and moonlit gullies on the plain, a pale dry riverbed
+  winding off under a big moon. Rook sits on the flagstones with his back to
+  the parapet; the crow perches on a merlon beside him.
+- At the end of the scene the crow takes off from the parapet and flies off
+  into the night; the narration now reads "On the parapet, the crow takes
+  off, all at once, into the dark." (it used to refer to a crow "down below
+  on the stairs" while the crow was sitting next to Rook).
+- `scripts/art_cine.gd`: new `ArtCine.rookery_top(frame)` (`rookery_top` cine,
+  4 frames of twinkling stars).
+- `scripts/story/story_act2.gd`: `_s4_carve()` uses `rookery_top`, re-places
+  Rook and the crow, and flies the crow off at the end.
+
 ## 2026-11-11 10:58 EST — `bugfix_alley_battle_uses_town_gate_backdrop` (v0.3.4)
 
 The S5 "alley of hooks" fight now happens in an actual alley instead of in

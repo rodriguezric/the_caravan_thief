@@ -25,6 +25,7 @@ static func make(name: String, frame: int) -> PixBuf:
 		"omen_void": return omen_void(frame)
 		"vision": return vision(frame)
 		"rookery": return rookery(frame)
+		"rookery_top": return rookery_top(frame)
 		"town": return town(frame)
 		"alley": return alley(frame)
 		"campfire": return campfire_bg(frame)
@@ -328,6 +329,83 @@ static func rookery(frame: int) -> PixBuf:
 		var p := Vector2(215 + cos(a) * 30, 18 + sin(a) * 6)
 		b.ascii(["X.X", ".X."], {"X": Pal.INK}, int(p.x), int(p.y))
 	ground(b, 138, Pal.DUNE.lerp(Pal.INK, 0.6), Pal.DUNE.lerp(Pal.INK, 0.4))
+	return b
+
+
+static func rookery_top(frame: int) -> PixBuf:
+	## The top of the Rookery at night: a stone parapet in front, and past it
+	## the whole badlands laid out far below, silver under a big moon. People
+	## sit on the flagstones (y ~150); a merlon at x 220-246 (top y 96) is a
+	## perch for the crow.
+	var b := PixBuf.new(W, H)
+	gradient(b, NIGHT, 0, 72)
+	stars(b, 140, 64, 37, frame)
+	moon(b, 250, 24, 13)
+	glow_pool(b, 250, 24, 44, 26, Pal.FROST, 0.1)
+	# the badlands far below, seen from high up: distant mesas on a hazy
+	# horizon, then the plain falling away toward the foot of the tower
+	mesa(b, 72, Pal.PLUM.lerp(Pal.INK, 0.45), 21)
+	var haze := Pal.PLUM.lerp(Pal.NAVY, 0.4).lerp(Pal.INK, 0.25)
+	var plain := Pal.DUNE.lerp(Pal.INK, 0.58)
+	for y in range(72, 120):
+		var f := float(y - 72) / 48.0
+		for x in W:
+			var c := haze.lerp(plain, minf(1.0, f * 1.6))
+			# long gullies and ridges catching the moon
+			var n := Pal.noise(x * 0.045, y * 0.9 + f * 6.0, 9.0)
+			if n > 0.45 and BAYER[y % 4][x % 4] < (n - 0.45) * 60.0:
+				c = c.lerp(Pal.FROST, 0.18 + f * 0.12)
+			elif n < -0.6:
+				c = c.lerp(Pal.INK, 0.25)
+			elif Pal.hash2(x, y, 23) > 0.97:
+				c = Pal.shade(c)
+			b.pset(x, y, c)
+	# a few buttes out on the plain, dark with moonlit tops
+	for bt in [[46, 84, 10, 5], [128, 78, 7, 4], [300, 90, 12, 6]]:
+		var bx: int = bt[0]
+		var by: int = bt[1]
+		var bw: int = bt[2]
+		var bh: int = bt[3]
+		b.poly([Vector2(bx - bw - 3, by), Vector2(bx - bw, by - bh), Vector2(bx + bw, by - bh), Vector2(bx + bw + 3, by)], plain.lerp(Pal.INK, 0.45))
+		b.rect(bx - bw, by - bh, bw * 2, 1, plain.lerp(Pal.FROST, 0.35))
+	# the dry riverbed, winding from under the moon toward the tower
+	for y in range(72, 120):
+		var f := float(y - 72) / 48.0
+		var cx := 250.0 - f * 120.0 + sin(y * 0.3) * (2.0 + f * 10.0)
+		var hw := 0.5 + f * 3.5
+		for x in range(int(cx - hw), int(cx + hw) + 1):
+			b.pset(x, y, Pal.SLATE.lerp(Pal.FROST, 0.55 - f * 0.15))
+	# the parapet: merlons and crenels along the edge of the tower top
+	var st := Pal.STONE.lerp(Pal.SLATE, 0.5).lerp(Pal.INK, 0.35)
+	var st_lit := st.lerp(Pal.FROST, 0.3)
+	b.rect(0, 118, W, 26, st)
+	b.rect(0, 118, W, 2, st_lit)
+	for mx in [-6, 40, 96, 152, 220, 286]:
+		b.rect(mx, 96, 26, 24, st)
+		b.rect(mx, 96, 26, 2, st_lit)
+		b.rect(mx + 24, 98, 2, 22, Pal.shade(st))
+	# mortar courses and worn blocks
+	for y in [126, 134]:
+		for x in W:
+			b.pset(x, y, Pal.shade(st))
+	for x in range(0, W, 14):
+		var y0 := 120 if (x / 14) % 2 == 0 else 127
+		for y in range(y0, y0 + 6):
+			b.pset(x, y, Pal.shade(st))
+	# the flagstones of the tower top, moonlit nearest the parapet
+	for y in range(144, H):
+		for x in W:
+			var c := Pal.STONE.lerp(Pal.INK, 0.5 + (y - 144) / 90.0)
+			if (y - 144) % 9 == 0 or (x + (y / 9) * 11) % 26 == 0:
+				c = Pal.shade(c)
+			elif Pal.hash2(x, y, 29) > 0.95:
+				c = c.lerp(Pal.FROST, 0.15)
+			b.pset(x, y, c)
+	glow_pool(b, 200, 150, 140, 14, Pal.FROST, 0.12)
+	# the parapet's shadow on the flags
+	for x in W:
+		for y in range(144, 147):
+			b.pset(x, y, b.pget(x, y).lerp(Pal.INK, 0.4))
 	return b
 
 

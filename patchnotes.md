@@ -1,5 +1,19 @@
 # Patch Notes
 
+## 2026-11-11 12:13 EST — `bugfix_bridge_cutscene_actors_below_bridge` (v0.3.13)
+
+After holding the bridge in S9, the crew now actually run across the bridge.
+
+- In the "Get the crew across" aftermath the runners were placed at the
+  bottom of the picture, so they ran along the canyon floor far below the
+  bridge. They now start at the near anchor and run along the deck itself,
+  following its sag down to mid-span and back up, then step off onto the far
+  cliff. Since the bridge is far off in that picture, they're drawn at half
+  the usual size.
+- `scripts/story/story_act3.gd`: `_s9_after()` "protect" builds each runner's
+  path from the gorge bridge's deck curve (x 40-280, y 71-83) and spawns them
+  at 1x scale.
+
 ## 2026-11-11 12:11 EST — `bugfix_gorge_fall_backdrop_solid_rectangle` (v0.3.12)
 
 The snapped-bridge picture no longer has a flat dark rectangle in the middle.

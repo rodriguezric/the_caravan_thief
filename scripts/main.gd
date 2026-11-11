@@ -239,6 +239,9 @@ func play_story() -> void:
 	in_story = false
 	if result.is_empty():
 		return
+	# Achievements the ending unlocks would toast over the ending's big title
+	# (top right is where both live), so hold them until the card is gone.
+	hold_toasts = true
 	var fresh := Game.record_ending(result.ending, result)
 	var card := EndingCard.new()
 	card.setup(result.ending, fresh, result)
@@ -248,6 +251,7 @@ func play_story() -> void:
 	await card.run()
 	await fade_out(0.6)
 	card.queue_free()
+	hold_toasts = false
 
 
 func _drop_cinemas() -> void:
@@ -474,7 +478,16 @@ func _show_toasts() -> void:
 		tw.tween_property(box, "position:x", 316.0 - box.size.x, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.tween_interval(2.6)
 		tw.tween_property(box, "position:x", 330.0, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-		await tw.finished
+		# a hold that starts mid-toast (an ending card coming up) tucks this one
+		# away at once and shows it again from the start once the hold lifts
+		while tw.is_running() and not hold_toasts:
+			await get_tree().process_frame
+		if tw.is_running():
+			tw.kill()
+			var away := box.create_tween()
+			away.tween_property(box, "position:x", 330.0, 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+			await away.finished
+			_toasts.push_front(a)
 		box.queue_free()
 	_toasting = false
 

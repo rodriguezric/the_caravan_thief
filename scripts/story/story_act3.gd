@@ -270,11 +270,21 @@ func _s9_after(res: Dictionary) -> void:
 			for id in ["fen", "mara", "wick", "bracken"]:
 				if s.a(id) and not Game.flag(id + "_dead"):
 					people.append(id)
+			# across the bridge itself: the deck in the gorge picture runs from
+			# x 40 to 280, sagging from y 70 at the ends to ~82 mid-span, and it
+			# is far off, so the runners are drawn small (1x) and follow the sag
+			var deck := func(x: float) -> float:
+				return 71.0 + sin(clampf((x - 40.0) / 240.0, 0.0, 1.0) * PI) * 12.0
 			for i in people.size():
-				var a := c.person(people[i], Vector2(-20 - i * 26, 156), 2, "", "run")
+				var a := c.person(people[i], Vector2(-12 - i * 20, 71), 2, "", "run", 1.0)
 				if people[i] == "rook":
 					a.set_spec(s.rook_spec())
-				c.walk(a, Vector2(230 + i * 16, 156), 90.0)
+				var end_x := 258.0 + (people.size() - 1 - i) * 12.0
+				var pts := []
+				for x in range(40, int(end_x), 12):
+					pts.append(Vector2(x, deck.call(float(x))))
+				pts.append(Vector2(end_x, 71))
+				a.walk_to(pts, 70.0)
 			await s.wait(2.6)
 			if Game.flag("bracken_dead") or Game.flag("wick_dead"):
 				await s.narrate("Not everyone makes the far side. The canyon takes its share, the way it always has.")

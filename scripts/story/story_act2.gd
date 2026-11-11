@@ -165,14 +165,15 @@ func _s4_haul() -> void:
 
 func _s4_carve() -> void:
 	s.unmarker()
-	var c := await s.cine("rookery", 0.6)
-	c.animate_bg("rookery", 4, 1.5)
+	var c := await s.cine("rookery_top", 0.6)
+	c.animate_bg("rookery_top", 4, 1.5)
 	c.effect = "stars"
 	c.effect_k = 0.2
 	s.music("omen", 1.0)
-	var rk := c.person("rook", Vector2(190, 150), 3, "", "sit")
+	# on the flagstones with his back to the parapet; the crow on a merlon
+	var rk := c.person("rook", Vector2(190, 156), 3, "", "sit")
 	rk.set_spec(s.rook_spec())
-	var crow := c.person("crow", Vector2(232, 148), 3)
+	var crow := c.person("crow", Vector2(233, 97), 3)
 	await s.narrate("The top of the tower. The whole badlands silver under the moon. Rook sits with the blade across his knees and doesn't sleep.")
 	s.sfx("whisper", 0.7, -4.0)
 	await s.say("blade", "You wanted a name.")
@@ -216,8 +217,11 @@ func _s4_carve() -> void:
 	rk.set_mood("")
 	rk.set_pose("sit")
 	s.sfx("caw", 1.0, -6.0)
+	crow.face(2)
+	crow.set_pose("fly")
+	c.walk(crow, Vector2(360, 10), 150.0)
 	await s.wait(0.5)
-	await s.narrate("Down below, the crow on the stairs takes off, all at once, into the dark.")
+	await s.narrate("On the parapet, the crow takes off, all at once, into the dark.")
 	await c.close(0.6)
 	s.a("player").set_spec(s.rook_spec())
 	Game.set_flag("carved_done")

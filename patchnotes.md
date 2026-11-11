@@ -1,5 +1,17 @@
 # Patch Notes
 
+## 2026-11-11 11:51 EST — `bugfix_defeat_results_lists_spared_enemies` (v0.3.8)
+
+Losing a fight no longer says an enemy "was spared".
+
+- An enemy that kneels instead of falling (the Factor) was listed as
+  "The Factor was spared." on the results card whatever the outcome, so losing
+  the S11 fight showed "DEFEATED ... The Factor was spared." as if Rook had
+  won and chosen mercy. Spared lines now appear only after a victory or a
+  completed objective.
+- `scripts/battle/battle_results.gd`: the spared lines are gated on
+  `outcome in ["victory", "objective"]`.
+
 ## 2026-11-11 11:50 EST — `bugfix_bearer_moves_when_nobody_holds_blade` (v0.3.7)
 
 Enemies no longer use "bearer" moves when nobody in the fight is carrying the

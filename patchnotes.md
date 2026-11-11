@@ -1,5 +1,26 @@
 # Patch Notes
 
+## 2026-11-11 12:30 EST — `bugfix_stealth_caught_fight_loop` (v0.3.16)
+
+Getting caught sneaking through the S2 camp no longer traps you in a loop of
+the same fight.
+
+- After the "Caught in the lanterns!" battle, Rook was left standing exactly
+  where he'd been seen, with the alert meter reset to zero; a guard still
+  looking his way spotted him again in about half a second and the same
+  battle started over, again and again. Now, after the fight:
+  - Rook slips back to the dark west edge of the camp where he came in ("Back
+    to the edge of the camp, where the lantern light gives out. Slower, this
+    time.");
+  - the guard who spotted him goes back to the start of his patrol round
+    (position, route and facing — before, only his position jumped);
+  - the guards can't raise the alert for 4 seconds, so nothing can re-trigger
+    the fight immediately.
+- `scripts/world.gd`: new `stealth_grace` timer (pauses alert build-up in
+  `_update_guards()`), new `reset_guard(actor)`.
+- `scripts/story/story_act1.gd`: `_s2_spotted()` uses them and moves Rook to
+  tile (1, 9).
+
 ## 2026-11-11 12:26 EST — `bugfix_s3_leave_sword_wick_bracken_battle_unstaged` (v0.3.15)
 
 The S3 "Leave it" route now shows how Wick ends up with the blade and how the

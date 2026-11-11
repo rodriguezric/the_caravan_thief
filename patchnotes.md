@@ -1,5 +1,19 @@
 # Patch Notes
 
+## 2026-11-11 10:48 EST — `bugfix_achievement_toast_covers_ending_title` (v0.3.3)
+
+Achievement toasts no longer cover the big title on the ending card.
+
+- Achievements earned at the end of a run (e.g. Clean Hands, The Bearer
+  Claimed) used to slide in at the top right over the ending's name while it
+  faded in. They now wait until the ending card closes and play afterwards.
+  A toast that is already on screen when the card comes up slides away at
+  once and replays in full later, so nothing is lost.
+- `scripts/main.gd`: `play_story()` holds toasts (`hold_toasts`) from
+  `record_ending()` until the card is freed; `_show_toasts()` now tucks away
+  and re-queues an in-flight toast when a hold starts (this also applies to
+  the battle results screen, which already used the hold).
+
 ## 2026-11-11 09:29 EST — `bugfix_s9_choice_text_vs_field_staging` (v0.3.2)
 
 S9 The Bridge Ambush: the field staging now matches the choice prompt

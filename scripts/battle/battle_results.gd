@@ -35,8 +35,11 @@ func _ready() -> void:
 		extra.append(["Got: " + str(l), Pal.GLOW])
 	for c in s.get("casualties", []):
 		extra.append([Data.spec(c).get("name", c) + " fell.", Pal.BLOOD.lerp(Pal.WHITE, 0.3)])
-	for c in s.get("spared", []):
-		extra.append([str(c) + " was spared.", Pal.SKY.lerp(Pal.WHITE, 0.3)])
+	# mercy is only Rook's to give when he's won; after a loss "spared" would
+	# read as if he had
+	if s.outcome in ["victory", "objective"]:
+		for c in s.get("spared", []):
+			extra.append([str(c) + " was spared.", Pal.SKY.lerp(Pal.WHITE, 0.3)])
 	var stat_rows := [["Turns", s.turns], ["Damage dealt", s.dealt], ["Damage taken", s.taken]]
 	var h := 40 + stat_rows.size() * 10 + note_lines.size() * 10 + (6 if note_lines.size() > 0 else 0) + mini(extra.size(), 6) * 10 + 16
 	panel = Art.make_box(kind)

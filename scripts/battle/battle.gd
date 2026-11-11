@@ -432,10 +432,26 @@ func _turn_order() -> Array:
 	return list
 
 
+func _objective_enemy() -> BattleUnit:
+	## The enemy an objective names with "who" (its unit id).
+	var who: String = def.get("objective", {}).get("who", "")
+	if who == "":
+		return null
+	for e: BattleUnit in enemies:
+		if e.id == who:
+			return e
+	return null
+
+
 func _check_end() -> Dictionary:
 	if fighters(party).is_empty():
 		return {"outcome": "defeat", "title": def.get("defeat_title", "DEFEATED"), "note": def.get("defeat_note", "")}
 	var standing := living(enemies).filter(func(e: BattleUnit) -> bool: return not e.down)
+	# "DEFEAT THE FACTOR": a defeat objective with a named target is won the
+	# moment that target is down (fallen or kneeling), whoever is left standing
+	var boss := _objective_enemy()
+	if objective == "defeat" and boss != null and boss.down and not standing.is_empty():
+		return {"outcome": "victory", "title": def.get("victory_title", "VICTORY"), "note": def.get("victory_note", "")}
 	if standing.is_empty():
 		if objective == "persuade" or objective == "disarm":
 			return {"outcome": "victory", "title": def.get("victory_title", "DISARMED"), "note": def.get("victory_note", "")}

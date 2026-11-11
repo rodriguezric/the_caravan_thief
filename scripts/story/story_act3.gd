@@ -571,14 +571,14 @@ func _factor_battle() -> Dictionary:
 	return {
 		"id": "s11_factor", "title": "The Factor", "bg": "pass_dawn", "music": "boss",
 		"party": s.party(),
-		"enemies": [BattleDefs.enemy("factor", {"pos": Vector2(84, 128)}), BattleDefs.enemy("hunter", {"pos": Vector2(44, 112), "hp": 56}), BattleDefs.enemy("hunter", {"pos": Vector2(124, 112), "hp": 44})],
+		"enemies": [BattleDefs.enemy("factor", {"id": "factor", "pos": Vector2(84, 128)}), BattleDefs.enemy("hunter", {"pos": Vector2(44, 112), "hp": 56}), BattleDefs.enemy("hunter", {"pos": Vector2(124, 112), "hp": 44})],
 		"objective": {"kind": "persuade" if Game.lore_count() >= 2 else "defeat", "need": 4, "who": "factor", "text": "REACH HIM" if Game.lore_count() >= 2 else "DEFEAT THE FACTOR",
 			"win_title": "THE LEDGER CLOSES", "note": "The Factor sits down in the road, very carefully, like a man much older than he looks.",
 			"talk_desc": "He's listening. He always listens."},
 		"talk": talk,
 		"victory_title": "THE FACTOR KNEELS",
 		"victory_note": "His robes are still spotless. He seems surprised by that.",
-		"thresholds": [{"unit": "e0", "below": 0.5, "fn": func(b: Battle) -> Dictionary:
+		"thresholds": [{"unit": "factor", "below": 0.5, "fn": func(b: Battle) -> Dictionary:
 			await b.say("factor", "You're using it more. Can you feel it? Every time you reach for it, it reaches back.", "")
 			await b.say("blade", "Don't listen. Strike.")
 			return {}}],

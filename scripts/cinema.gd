@@ -38,6 +38,7 @@ var particles: Array = []
 var anim_bg := ""
 var anim_frames := 0
 var anim_fps := 0.0
+var closing := false
 var cast := {}
 var letterbox: Array = []
 
@@ -74,6 +75,7 @@ static func open(color: Color = Pal.INK) -> Cinema:
 	c.vig.material = mat
 	c.add_child(c.vig)
 	Game.main.cine_layer.add_child(c)
+	Game.main.claim_screen()
 	return c
 
 
@@ -195,8 +197,42 @@ func fade_node(n: CanvasItem, a: float, t_: float) -> void:
 
 
 func close(fade: float = 0.5) -> void:
-	await create_tween().tween_property(self, "modulate:a", 0.0, fade).finished
+	## Ends the vignette. Returns at once so the story can say what comes
+	## next; if that's another cutscene or a fade to ink, this one stays put
+	## underneath until it's covered (no flash of the field in between).
+	## Otherwise it dissolves to the field as usual.
+	if closing:
+		return
+	closing = true
+	_leave(fade, Game.main.screen_claim)
+	await get_tree().process_frame
+
+
+func _leave(fade: float, claim: int) -> void:
+	for i in 2:
+		await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	if Game.main.screen_claim != claim:
+		var waited := 0.0
+		while is_inside_tree() and waited < 2.0 and Game.main.fade_rect.color.a < 0.99 and not _covered():
+			await get_tree().process_frame
+			waited += get_process_delta_time()
+		if is_inside_tree():
+			queue_free()
+		return
+	var tw := create_tween()
+	tw.tween_property(self, "modulate:a", 0.0, fade)
+	await tw.finished
 	queue_free()
+
+
+func _covered() -> bool:
+	## A newer cutscene is fully faded in on top of this one.
+	for c in get_parent().get_children():
+		if c is Cinema and c != self and not c.closing and c.get_index() > get_index() and c.modulate.a >= 0.99:
+			return true
+	return false
 
 
 func _process(delta: float) -> void:

@@ -1,5 +1,29 @@
 # Patch Notes
 
+## 2026-11-11 12:20 EST — `bugfix_field_flash_between_battle_and_cutscene` (v0.3.14)
+
+No more flashes of the old field map between a battle and a cutscene, between
+two cutscenes, or between a cutscene and the next scene's title card.
+
+- After a battle or minigame the game always faded back to the field, and
+  closing a cutscene always dissolved to the field underneath — even when the
+  very next thing was another cutscene or a scene change. You'd glimpse the
+  previous map in between (e.g. S3's wagon interior three times during the
+  escape, S1/S9's field with enemies still standing). Now:
+  - after a battle/minigame the screen stays dark for a moment; if a cutscene
+    or scene card follows, it comes straight up out of the dark; otherwise the
+    field fades in as before;
+  - a closing cutscene stays on screen if another cutscene is fading in over
+    it or the screen is fading to ink, and only dissolves to the field when
+    play actually returns to the field.
+- `scripts/main.gd`: `screen_claim` / `claim_screen()` (bumped by `fade_out()`
+  and `Cinema.open()`), `reveal_soon()` used by `battle()` and `minigame()`
+  instead of an unconditional `fade_in()`.
+- `scripts/cinema.gd`: `close()` returns at once and `_leave()` decides between
+  staying under whatever claimed the screen and dissolving to the field.
+- `scripts/story/story.gd`: `cine()` brings a cutscene up out of a dark screen
+  instead of fading it in over the field.
+
 ## 2026-11-11 12:13 EST — `bugfix_bridge_cutscene_actors_below_bridge` (v0.3.13)
 
 After holding the bridge in S9, the crew now actually run across the bridge.

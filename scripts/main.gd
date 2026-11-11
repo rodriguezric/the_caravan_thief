@@ -36,6 +36,9 @@ var _toasting := false
 var in_story := false
 ## Toasts wait while a results or ending screen is up, so they never cover it.
 var hold_toasts := false
+## Bumped whenever something takes over the screen (a fade to ink, a new
+## cutscene), so a pending "back to the field" reveal knows to stand down.
+var screen_claim := 0
 
 
 func _ready() -> void:
@@ -329,7 +332,7 @@ func battle(def: Dictionary) -> Dictionary:
 	if prev_song != "" and not def.get("keep_music", false):
 		Sfx.music(prev_song, 0.8)
 	if not def.get("stay_dark", false):
-		await fade_in(0.4)
+		reveal_soon(0.4)
 	return summary
 
 
@@ -351,11 +354,27 @@ func minigame(kind: String, opts: Dictionary = {}) -> Dictionary:
 	if prev_song != "" and not opts.get("keep_music", false):
 		Sfx.music(prev_song, 0.8)
 	if not opts.get("stay_dark", false):
-		await fade_in(0.3)
+		reveal_soon(0.3)
 	return res
 
 
+func claim_screen() -> void:
+	screen_claim += 1
+
+
+func reveal_soon(t: float = 0.4) -> void:
+	## Fade back in to the field after a battle or minigame, unless whatever
+	## the story does next (a cutscene, a scene card) takes the screen first,
+	## so the old field never flashes up in between.
+	var c0 := screen_claim
+	for i in 2:
+		await get_tree().process_frame
+	if screen_claim == c0:
+		await fade_in(t)
+
+
 func fade_out(t: float = 0.3, c: Color = Pal.INK) -> void:
+	claim_screen()
 	fade_rect.color = Color(c, fade_rect.color.a)
 	var tw := create_tween()
 	tw.tween_property(fade_rect, "color:a", 1.0, t)

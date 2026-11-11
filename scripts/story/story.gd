@@ -493,12 +493,16 @@ func until(cond: Callable) -> void:
 
 func cine(bg: String = "", fade: float = 0.5) -> Cinema:
 	var c := Cinema.open()
-	c.modulate.a = 0.0
+	# from a dark screen (after a battle, a scene card) the cutscene comes up
+	# out of the dark; otherwise it dissolves in over what's there
+	var dark: bool = m.fade_rect.color.a > 0.01
+	c.modulate.a = 1.0 if dark else 0.0
 	if bg != "":
 		c.show_bg(bg, 0, 0.0)
-	c.create_tween().tween_property(c, "modulate:a", 1.0, fade)
-	if m.fade_rect.color.a > 0.01:
+	if dark:
 		m.fade_in(fade)
+	else:
+		c.create_tween().tween_property(c, "modulate:a", 1.0, fade)
 	await wait(fade)
 	for old in m.cine_layer.get_children():
 		if old is Cinema and old != c:

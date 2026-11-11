@@ -1,5 +1,19 @@
 # Patch Notes
 
+## 2026-11-11 12:06 EST — `bugfix_keystone_defeat_staging_mismatch` (v0.3.10)
+
+The S11 keystone scene after a lost Factor fight now shows what the narration
+says, and the crew no longer pop in mid-scene.
+
+- After a defeat, "Rook is on his knees in the road" used to play over Rook
+  standing with the blade held high. He now kneels, hurt, for that line, then
+  gets back up with the blade raised before the Blade says "Choose."
+- Mara, Fen, Wick and Bracken (whoever is still with him) are now in place
+  from the first line, spread out behind Rook, instead of appearing all at
+  once after the narration, bunched on top of each other.
+- `scripts/story/story_act3.gd`: `_keystone()` places the crew before the
+  narration (30px apart) and stages Rook kneel → hold_up on defeat.
+
 ## 2026-11-11 11:59 EST — `bugfix_factor_kneels_but_fight_continues` (v0.3.9)
 
 "DEFEAT THE FACTOR" now ends when the Factor kneels.

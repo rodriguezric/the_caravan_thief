@@ -26,6 +26,7 @@ static func make(name: String, frame: int) -> PixBuf:
 		"vision": return vision(frame)
 		"rookery": return rookery(frame)
 		"town": return town(frame)
+		"alley": return alley(frame)
 		"campfire": return campfire_bg(frame)
 		"shrine": return shrine(frame)
 		"gorge": return gorge(frame)
@@ -358,6 +359,102 @@ static func town(frame: int) -> PixBuf:
 		var flap := (frame + k) % 2
 		b.rect(bx, 40, 8, 26 - flap, Pal.RED.lerp(Pal.ROSE, 0.3))
 	ground(b, 140, Pal.SAND.lerp(Pal.STONE, 0.4), Pal.hi(Pal.SAND), 0.5)
+	return b
+
+
+static func alley(frame: int) -> PixBuf:
+	## A back alley off the Kesh Crossing square, looking down its length:
+	## tall plastered walls closing in toward a sunlit street at the far end,
+	## a slit of sky between the rooflines, doorways, shuttered windows and
+	## washing strung wall to wall. One-point perspective onto (160, 138), the
+	## battle floor's horizon, so its cobbles run straight down the alley.
+	var b := PixBuf.new(W, H)
+	const VY := 138.0
+	const FAR := 0.85
+	gradient(b, DAY, 0, 120)
+	# the far end: the next street over, in full sun
+	var fx0 := int(160 * FAR)
+	var fx1 := W - fx0
+	var lit := Pal.CANVAS.lerp(Pal.WHITE, 0.35)
+	b.rect(fx0, 64, fx1 - fx0, 80, lit)
+	b.rect(fx0, 64, fx1 - fx0, 2, Pal.CLAY.lerp(Pal.WHITE, 0.2))
+	b.rect(fx0 + 8, 76, 8, 10, Pal.INK2.lerp(Pal.STONE, 0.4))
+	b.rect(fx0 + 30, 76, 8, 10, Pal.INK2.lerp(Pal.STONE, 0.4))
+	for x in range(fx0 + 4, fx1 - 4):
+		b.pset(x, 104, Pal.TEAL if (x / 3) % 2 == 0 else Pal.CANVAS)
+		b.pset(x, 105, Pal.TEAL if (x / 3) % 2 == 0 else Pal.CANVAS)
+	b.rect(fx0, 106, fx1 - fx0, 34, lit.lerp(Pal.SAND, 0.3))
+	# the two walls, column by column: t = depth (0 near, FAR at the end)
+	var plaster_l := Pal.CANVAS.lerp(Pal.CLAY, 0.35)
+	var plaster_r := Pal.SAND.lerp(Pal.CLAY, 0.25)
+	for side in 2:
+		for i in fx0:
+			var x := i if side == 0 else W - 1 - i
+			var t := float(i) / 160.0
+			var k := 1.0 - t
+			var top := int(VY + (-200.0 - VY) * k)
+			var base: Color = plaster_l if side == 0 else plaster_r
+			# deeper is dimmer; the right wall is in shade except a band of sun
+			# just under its roofline
+			var c := base.lerp(Pal.INK, 0.45 - t * 0.25) if side == 0 else base.lerp(Pal.INK, 0.6 - t * 0.3)
+			var sun_to := int(VY + (-150.0 - VY) * k)
+			for y in range(maxi(0, top), 141):
+				var col := c
+				if side == 1 and y < sun_to:
+					col = base.lerp(Pal.WHITE, 0.15)
+				# plaster courses running off toward the far end
+				for y0 in [-110.0, -30.0, 50.0]:
+					if y == int(VY + (y0 - VY) * k):
+						col = Pal.shade(col)
+				if Pal.hash2(x / 2, y / 3, 41 + side) > 0.93:
+					col = col.lerp(Pal.INK, 0.12)
+				b.pset(x, y, col)
+			# the roofline: a lip of clay tile
+			for d in 2:
+				b.pset(x, top + d, Pal.CLAY.lerp(Pal.INK, 0.25 + d * 0.15))
+			# windows on the upper floor, doorways at street level
+			for win in [[0.3, 0.38], [0.55, 0.61], [0.72, 0.76]]:
+				if t >= win[0] and t < win[1]:
+					var wy0 := int(VY + (-90.0 - VY) * k)
+					var wy1 := int(VY + (-45.0 - VY) * k)
+					var edge: bool = t < win[0] + 0.012 or t >= win[1] - 0.012
+					for y in range(maxi(0, wy0), wy1):
+						b.pset(x, y, Pal.WOOD.lerp(Pal.INK, 0.4) if edge else Pal.INK2)
+					b.pset(x, wy1, Pal.WOOD)
+			for door in [[0.14, 0.27], [0.62, 0.69]]:
+				if t >= door[0] and t < door[1]:
+					var dy0 := int(VY + (40.0 - VY) * k)
+					var edge: bool = t < door[0] + 0.015 or t >= door[1] - 0.015
+					for y in range(maxi(0, dy0), 141):
+						b.pset(x, y, Pal.WOOD.lerp(Pal.INK, 0.35) if edge else Pal.INK2.lerp(Pal.WOOD, 0.15))
+	# washing lines, wall to wall, with the laundry stirring
+	var cloths := [Pal.CLAY, Pal.TEAL, Pal.CREAM, Pal.PURPLE, Pal.SAND.lerp(Pal.WHITE, 0.4), Pal.ROSE]
+	for li in 2:
+		var t: float = [0.55, 0.72][li]
+		var k := 1.0 - t
+		var x0 := int(160 * t)
+		var x1 := W - x0
+		var y0: float = VY + ([10.0, 30.0][li] - VY) * k
+		var sag := 10.0 * k
+		var prev := Vector2i(x0, int(y0))
+		for x in range(x0, x1 + 1):
+			var u := float(x - x0) / (x1 - x0)
+			var y := int(y0 + sin(u * PI) * sag)
+			b.line(prev.x, prev.y, x, y, Pal.INK.lerp(Pal.DUST, 0.3))
+			prev = Vector2i(x, y)
+		var n := 5 - li
+		for j in n:
+			var u := (j + 0.7) / (n + 0.4)
+			var cx := int(lerpf(x0, x1, u))
+			var cy := int(y0 + sin(u * PI) * sag) + 1
+			var cw := maxi(3, int(16 * k))
+			var ch := maxi(4, int((14 + Pal.hash2(j, li, 5) * 10) * k))
+			var sway := 1 if (frame + j) % 2 == 0 else 0
+			var cc: Color = cloths[(j + li * 2) % cloths.size()]
+			b.rect(cx - cw / 2, cy, cw, ch, cc.lerp(Pal.INK, 0.15))
+			b.rect(cx - cw / 2 + sway, cy + ch, cw - 1, 1, Pal.shade(cc))
+			b.rect(cx - cw / 2, cy, cw, 1, cc)
+	ground(b, 140, Pal.SAND.lerp(Pal.STONE, 0.5).lerp(Pal.INK, 0.25), Pal.SAND.lerp(Pal.STONE, 0.4), 0.5)
 	return b
 
 

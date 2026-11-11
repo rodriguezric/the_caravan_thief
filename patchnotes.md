@@ -1,5 +1,18 @@
 # Patch Notes
 
+## 2026-11-11 11:40 EST — `bugfix_bridge_rollcall_names_absent_crew` (v0.3.6)
+
+The S9 "All of them. Every one." line after the bridge crossing now names only
+the crew who are actually there.
+
+- When the crew all make it across the gorge, the narration used to list
+  "Bracken, Wick, Fen, Mara, Rook" no matter what — naming Wick after he was
+  gone, Fen after he was killed, or Mara after she left. It now names exactly
+  the people running across on screen, in the same order (two names read
+  "X and Y").
+- `scripts/story/story_act3.gd`: new `_roll_call(people)` builds the names from
+  the same `people` list `_s9_after()` uses to spawn the runners.
+
 ## 2026-11-11 11:21 EST — `bugfix_tower_top_carving_scene_on_ground` (v0.3.5)
 
 The S4 blade-carving scene ("The top of the tower...") now actually takes

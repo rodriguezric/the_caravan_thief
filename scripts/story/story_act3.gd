@@ -96,8 +96,18 @@ func scene_s9() -> Variant:
 	# the ambush: hunters climbing up from under the bridge on both sides
 	s.sfx("alert", 1.0, -2.0)
 	s.shake(1.5, 0.4)
+	# each one vaults up over the rail from the drop and lands on the planks
+	# (the deck is rows 6-7): behind the crew, and between Rook and the Factor
+	var lands := [Vector2i(8, 6), Vector2i(15, 7), Vector2i(17, 6)]
 	for k in 3:
-		var h := s.spawn("hunter", Vector2i(10 + k * 4, 5 + (k % 2) * 3), 0 if k % 2 == 0 else 1)
+		var from_north: bool = lands[k].y == 6
+		var h := s.spawn("hunter", lands[k], 0 if from_north else 1)
+		var land := h.position
+		h.position = land + Vector2(0, -16.0 if from_north else 16.0)
+		h.modulate.a = 0.0
+		var tw := h.create_tween()
+		tw.tween_property(h, "position", land, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(h, "modulate:a", 1.0, 0.12)
 		h.hop(10.0)
 		s.sfx("whiff", 1.0 + k * 0.1, -6.0)
 		await s.wait(0.18)

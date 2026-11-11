@@ -1,5 +1,18 @@
 # Patch Notes
 
+## 2026-11-11 12:09 EST — `bugfix_ambush_hunters_spawn_over_chasm` (v0.3.11)
+
+The S9 bridge ambush hunters now land on the bridge instead of hovering over
+the canyon.
+
+- The three hunters used to pop into existence on the open-canyon rows above
+  and below the deck, floating in mid-air. They now vault up over the rail
+  from the drop — starting just off the edge, fading in and hopping onto the
+  planks — and land on the deck: one behind the crew, one in front of Rook,
+  and one between Rook and the Factor.
+- `scripts/story/story_act3.gd`: `scene_s9()` spawns the hunters on deck tiles
+  (rows 6-7) and tweens each in from 16px over the edge.
+
 ## 2026-11-11 12:06 EST — `bugfix_keystone_defeat_staging_mismatch` (v0.3.10)
 
 The S11 keystone scene after a lost Factor fight now shows what the narration

@@ -573,20 +573,8 @@ static func gorge(frame: int) -> PixBuf:
 	gradient(b, DAY, 0, 60)
 	# canyon walls on both sides
 	for y in range(30, H):
-		var depth := float(y - 30) / (H - 30)
 		for x in W:
-			var lw := 70.0 + sin(y * 0.08) * 10.0 - depth * 20.0
-			var rw := 250.0 + sin(y * 0.07 + 1.0) * 10.0 + depth * 20.0
-			var c: Color
-			if x < lw or x > rw:
-				var band := (y + int(sin(x * 0.1) * 3.0)) / 6
-				c = [Pal.DUNE, Pal.CLAY.lerp(Pal.DUNE, 0.5), Pal.SAND.lerp(Pal.DUNE, 0.5)][band % 3]
-				c = c.lerp(Pal.INK, depth * 0.3)
-			else:
-				c = Pal.CLAY.lerp(Pal.INK, 0.4 + depth * 0.55)
-				if Pal.hash2(x / 2, y / 3, 13) > 0.92:
-					c = c.lerp(Pal.DUNE, 0.2)
-			b.img.set_pixel(x, y, c)
+			b.img.set_pixel(x, y, _gorge_px(x, y))
 	# the bridge
 	var sag := 1.0 + sin(frame * 0.8) * 0.6
 	for x in range(40, 280):
@@ -599,16 +587,40 @@ static func gorge(frame: int) -> PixBuf:
 	return b
 
 
+static func _gorge_px(x: int, y: int) -> Color:
+	## The canyon at (x, y) (y >= 30): banded rock walls either side, the
+	## shadowed drop between them.
+	var depth := float(y - 30) / (H - 30)
+	var lw := 70.0 + sin(y * 0.08) * 10.0 - depth * 20.0
+	var rw := 250.0 + sin(y * 0.07 + 1.0) * 10.0 + depth * 20.0
+	var c: Color
+	if x < lw or x > rw:
+		var band := (y + int(sin(x * 0.1) * 3.0)) / 6
+		c = [Pal.DUNE, Pal.CLAY.lerp(Pal.DUNE, 0.5), Pal.SAND.lerp(Pal.DUNE, 0.5)][band % 3]
+		c = c.lerp(Pal.INK, depth * 0.3)
+	else:
+		c = Pal.CLAY.lerp(Pal.INK, 0.4 + depth * 0.55)
+		if Pal.hash2(x / 2, y / 3, 13) > 0.92:
+			c = c.lerp(Pal.DUNE, 0.2)
+	return c
+
+
 static func gorge_fall(frame: int) -> PixBuf:
 	## The bridge's broken ropes hanging into the canyon.
 	var b := gorge(0)
+	# where the middle of the bridge was: just canyon again
 	for y in range(60, 100):
 		for x in range(140, 200):
-			b.pset(x, y, b.pget(x, 120))
+			b.pset(x, y, _gorge_px(x, y))
 	for k in 6:
 		var x0 := 140 + k * 2
 		for y in range(64, 64 + 40 + k * 4):
 			b.pset(x0 + int(sin(y * 0.2 + frame + k) * 2.0), y, Pal.WOOD.lerp(Pal.DUST, 0.2))
+	# the far end's snapped ropes, shorter, swinging the other way
+	for k in 4:
+		var x1 := 199 - k * 2
+		for y in range(66, 66 + 14 + k * 5):
+			b.pset(x1 + int(sin(y * 0.25 - frame - k) * 1.5), y, Pal.CANVAS.lerp(Pal.LEATHER, 0.4))
 	return b
 
 

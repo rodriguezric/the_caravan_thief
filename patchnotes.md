@@ -1,5 +1,18 @@
 # Patch Notes
 
+## 2026-11-11 12:11 EST — `bugfix_gorge_fall_backdrop_solid_rectangle` (v0.3.12)
+
+The snapped-bridge picture no longer has a flat dark rectangle in the middle.
+
+- When the Gorge Bridge falls (S9 "pursue" route), the missing middle of the
+  bridge was painted over with a single row's colour, leaving a solid block
+  that stood out against the textured canyon behind Rook. The gap is now
+  repainted with the canyon itself, and the far end of the bridge gets a few
+  snapped ropes hanging into the drop to match the near end.
+- `scripts/art_cine.gd`: the canyon pixel rule moved into `_gorge_px(x, y)`
+  (used by `gorge()`, whose picture is unchanged); `gorge_fall()` repaints the
+  gap with it and draws the far-end ropes.
+
 ## 2026-11-11 12:09 EST — `bugfix_ambush_hunters_spawn_over_chasm` (v0.3.11)
 
 The S9 bridge ambush hunters now land on the bridge instead of hovering over

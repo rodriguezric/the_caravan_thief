@@ -1,5 +1,22 @@
 # Patch Notes
 
+## 2026-11-11 11:59 EST — `bugfix_factor_kneels_but_fight_continues` (v0.3.9)
+
+"DEFEAT THE FACTOR" now ends when the Factor kneels.
+
+- In the S11 fight (without enough lore to talk him down), the Factor's
+  knockout puts him on one knee, but the battle only ended once every enemy
+  was down — so it carried on against his two hunters, and a loss after that
+  had the Factor "standing over" Rook seconds after kneeling. A defeat
+  objective that names its target now ends in victory the moment that target
+  is down (fallen or kneeling), even with others still standing.
+- `scripts/battle/battle.gd`: new `_objective_enemy()` (the unit an objective
+  names with `who`); `_check_end()` returns victory when it is down on a
+  `defeat` objective.
+- `scripts/story/story_act3.gd`: the Factor's unit now has the id `factor`
+  (it was `e0`, so the objective's `who: "factor"` never matched); his
+  half-health threshold line uses the new id.
+
 ## 2026-11-11 11:51 EST — `bugfix_defeat_results_lists_spared_enemies` (v0.3.8)
 
 Losing a fight no longer says an enemy "was spared".

@@ -1,5 +1,23 @@
 # Patch Notes
 
+## 2026-11-11 12:26 EST — `bugfix_s3_leave_sword_wick_bracken_battle_unstaged` (v0.3.15)
+
+The S3 "Leave it" route now shows how Wick ends up with the blade and how the
+fight with Bracken starts, instead of jump-cutting to a battle.
+
+- Before: Wick vanished the instant his hands touched the box, a hunter
+  shouted from nowhere, and the battle cut in with Rook and Bracken outdoors
+  although Bracken was never shown arriving.
+- Now: the blade takes to Wick on screen (violet flash, his sword look and
+  "omen" face); a hunter bursts into the wagon doorway and shouts; Rook yells
+  "Out. OUT!" and the two of them bowl past him and out; outside in the
+  lantern-lit camp, Rook and Wick run in, two hunters and a guard close from
+  the other side, and Bracken charges in ("Nobody lays a hook on the boy.")
+  before the battle starts. Rook tells Wick to stay behind them, which is why
+  Wick only joins the fight on turn 2.
+- `scripts/story/story_act1.gd`: `_s3_leave()` restaged (field beats in the
+  wagon, then a `night_camp` cutscene leading into the `s3_wick` battle).
+
 ## 2026-11-11 12:20 EST — `bugfix_field_flash_between_battle_and_cutscene` (v0.3.14)
 
 No more flashes of the old field map between a battle and a cutscene, between

@@ -1081,10 +1081,56 @@ func _s3_leave() -> void:
 	await s.say("rook", "Wick, NO-", "shock")
 	await s.walk("wick", [Vector2i(6, 4)], 70.0)
 	await s.narrate("And then Wick is past him, both hands in the box.")
-	s.sfx("door", 1.0, -4.0)
-	await s.say("hunter", "THIEVES! At the cargo!", "angry")
-	s.w.remove_npc("wick")
+	# the blade takes to him at once
+	wick.face(1)
+	s.sfx("omen", 1.0, -4.0)
+	s.flash(Pal.OMEN, 0.3)
+	wick.set_spec(Data.spec("wick_sword"))
+	wick.set_mood("omen")
+	wick.hop(4.0)
 	Game.set_flag("wick_sword")
+	await s.wait(0.4)
+	# and a hunter in the doorway
+	s.sfx("door", 1.0, -4.0)
+	var h := s.spawn("hunter", Vector2i(6, 6), 1, {"id": "hunter"})
+	h.hop(6.0)
+	r.emote("!")
+	await s.say("hunter", "THIEVES! At the cargo!", "angry")
+	await s.say("rook", "Out. OUT!", "shock")
+	# they bowl past him and out into the night
+	s.walk("wick", [Vector2i(5, 4), Vector2i(5, 5)], 110.0)
+	await s.wait(0.15)
+	h.hop(8.0)
+	h.face(3)
+	await s.walk("player", [Vector2i(4, 5)], 110.0)
+	r.face(0)
+	wick.face(0)
+	for a in [r, wick]:
+		a.create_tween().tween_property(a, "modulate:a", 0.0, 0.2)
+	await s.wait(0.25)
+	s.w.remove_npc("wick")
+	s.w.remove_npc("hunter")
+	r.visible = false
+	# outside: the camp waking up, and Bracken coming at a run
+	var c := await s.cine("night_camp", 0.4)
+	c.animate_bg("night_camp", 4, 2.0)
+	var rk := c.person("rook", Vector2(-20, 156), 2, "shock", "run")
+	rk.set_spec(s.rook_spec())
+	var wkc := c.person("wick_sword", Vector2(-50, 156), 2, "omen", "run")
+	c.walk(rk, Vector2(170, 156), 140.0)
+	await c.walk(wkc, Vector2(130, 156), 140.0)
+	var foes := []
+	for k in 3:
+		var f := c.person("guard" if k == 1 else "hunter", Vector2(350 + k * 24, 156), 3, "angry", "run")
+		c.walk(f, Vector2(236 + k * 26, 156), 120.0)
+		foes.append(f)
+	s.sfx("alert", 1.0, -4.0)
+	await s.wait(0.6)
+	var br := c.person("bracken", Vector2(-30, 156), 2, "angry", "run")
+	await c.walk(br, Vector2(196, 156), 170.0)
+	br.hop(6.0)
+	await s.say("bracken", "Nobody lays a hook on the boy. Nobody.", "angry")
+	await s.say("rook", "Wick, stay behind us!", "determined")
 	var res := await s.battle({
 		"id": "s3_wick", "title": "The hunters come running!", "bg": "camp", "music": "battle",
 		"party": ["rook", "bracken"],
@@ -1108,6 +1154,9 @@ func _s3_leave() -> void:
 	})
 	if res.outcome == "defeat":
 		Game.set_flag("injured")
+	if is_instance_valid(r):
+		r.visible = true
+		r.modulate.a = 1.0
 
 
 func _s3_escape() -> void:

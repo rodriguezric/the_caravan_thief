@@ -237,6 +237,19 @@ func _fall(who: String) -> void:
 		Game.set_flag("wick_gone")
 
 
+func _roll_call(people: Array) -> String:
+	## The names of whoever actually made it across, in the crew's old order
+	## (Bracken first, Rook last), for the "All of them" line.
+	var short := {"bracken": "Bracken", "wick": "Wick", "fen": "Fen", "mara": "Mara", "rook": "Rook"}
+	var names := []
+	for id in ["bracken", "wick", "fen", "mara", "rook"]:
+		if people.has(id):
+			names.append(short[id])
+	if names.size() == 2:
+		return "%s and %s" % names
+	return ", ".join(PackedStringArray(names))
+
+
 func _s9_after(res: Dictionary) -> void:
 	match str(Game.fval("bridge", "")):
 		"protect":
@@ -256,7 +269,7 @@ func _s9_after(res: Dictionary) -> void:
 			if Game.flag("bracken_dead") or Game.flag("wick_dead"):
 				await s.narrate("Not everyone makes the far side. The canyon takes its share, the way it always has.")
 			else:
-				await s.narrate("All of them. Every one. Bracken, Wick, Fen, Mara, Rook: off the planks and onto the rock, as the hunters fall back into the wind.")
+				await s.narrate("All of them. Every one. %s: off the planks and onto the rock, as the hunters fall back into the wind." % _roll_call(people))
 				for a in c.actors.get_children():
 					if a is Actor:
 						a.hop(6.0)

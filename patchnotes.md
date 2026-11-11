@@ -1,5 +1,21 @@
 # Patch Notes
 
+## 2026-11-11 11:50 EST — `bugfix_bearer_moves_when_nobody_holds_blade` (v0.3.7)
+
+Enemies no longer use "bearer" moves when nobody in the fight is carrying the
+blade.
+
+- Hunters' "Mark the Bearer" ("points a hook at the blade's bearer") and the
+  Factor's bearer moves (Appraise, Seal, Claim) could be picked even when Rook
+  didn't have the sword (e.g. the S3 "Leave it" fight, with Wick carrying it),
+  landing on a random party member under a name and text that claimed a
+  bearer. Those moves are now left out of an enemy's choices unless Rook is in
+  the fight, standing, and holding the blade; an enemy with only bearer moves
+  falls back to a plain Attack.
+- `scripts/battle/battle.gd`: new `_bearer_present()`; `_choose_intent()`
+  filters `target: "bearer"` moves when it's false; `_enemy_target()` uses the
+  same check.
+
 ## 2026-11-11 11:40 EST — `bugfix_bridge_rollcall_names_absent_crew` (v0.3.6)
 
 The S9 "All of them. Every one." line after the bridge crossing now names only

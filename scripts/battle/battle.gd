@@ -1855,8 +1855,20 @@ func _talk(u: BattleUnit) -> Dictionary:
 
 # ------------------------------------------------------------- enemies --
 
+func _bearer_present() -> bool:
+	## Is there a blade-bearer on the field for "bearer" moves to aim at?
+	var rook := _rook()
+	return rook != null and rook.alive and Game.flag("has_sword")
+
+
 func _choose_intent(e: BattleUnit) -> void:
 	var moves: Array = e.data.get("moves", [{"name": "Attack", "power": 1.0}])
+	# moves aimed at the blade's bearer ("points a hook at the blade's
+	# bearer") make no sense when nobody here is holding it
+	if not _bearer_present():
+		moves = moves.filter(func(m: Dictionary) -> bool: return m.get("target", "") != "bearer")
+		if moves.is_empty():
+			moves = [{"name": "Attack", "power": 1.0}]
 	var total := 0.0
 	for m in moves:
 		total += float(m.get("weight", 1.0))
@@ -1882,7 +1894,7 @@ func _enemy_target(e: BattleUnit, mv: Dictionary) -> BattleUnit:
 	if list.is_empty():
 		return null
 	var rook := _rook()
-	if (mv.get("target", "") == "bearer" or e.data.get("focus", "") == "bearer" and randf() < 0.6) and rook != null and rook.alive and Game.flag("has_sword"):
+	if (mv.get("target", "") == "bearer" or e.data.get("focus", "") == "bearer" and randf() < 0.6) and _bearer_present():
 		return rook
 	for p: BattleUnit in list:
 		if p.has("marked") and randf() < 0.7:

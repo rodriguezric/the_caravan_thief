@@ -8,7 +8,7 @@ class_name ArtBattle
 const W := 320
 const H := 180
 const HORIZON := 92
-const FRAMES := {"road": 1, "camp": 4, "wagon": 2, "rookery": 4, "alley": 1, "bridge": 4, "shrine": 1, "pass": 4, "tomb": 2, "campfire": 4, "vision": 4}
+const FRAMES := {"road": 1, "camp": 4, "wagon": 2, "rookery": 4, "alley": 2, "bridge": 4, "shrine": 1, "pass": 4, "tomb": 2, "campfire": 4, "vision": 4}
 
 
 static func frames(name: String) -> int:
@@ -32,7 +32,7 @@ static func backdrop(name: String, frame: int) -> PixBuf:
 			b.blit(ArtCine.rookery(frame), 0, -44)
 			_floor(b, Pal.STONE.lerp(Pal.INK, 0.5), Pal.STONE.lerp(Pal.INK, 0.35), "flags", frame)
 		"alley":
-			b.blit(ArtCine.town(frame), 0, -46)
+			b.blit(ArtCine.alley(frame), 0, -46)
 			_floor(b, Pal.SAND.lerp(Pal.STONE, 0.4), Pal.hi(Pal.SAND).lerp(Pal.STONE, 0.3), "cobbles", frame)
 		"bridge":
 			b.blit(ArtCine.gorge(frame), 0, 0)

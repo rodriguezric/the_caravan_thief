@@ -1,5 +1,20 @@
 # Patch Notes
 
+## 2026-11-11 10:58 EST — `bugfix_alley_battle_uses_town_gate_backdrop` (v0.3.4)
+
+The S5 "alley of hooks" fight now happens in an actual alley instead of in
+front of the Kesh Crossing border gate.
+
+- New backdrop: a narrow back alley seen down its length — tall plastered
+  walls closing in on either side, a slit of sky between the rooflines,
+  doorways and shuttered windows, washing strung wall to wall (it stirs in a
+  2-frame loop), and the next street over in full sun at the far end. The
+  battle floor's cobbles run straight down the alley.
+- `scripts/art_cine.gd`: new `ArtCine.alley(frame)` (one-point perspective onto
+  the battle horizon), also available as the `alley` cine.
+- `scripts/art_battle.gd`: the `alley` battle backdrop blits `ArtCine.alley()`
+  instead of `ArtCine.town()`; 2 animation frames.
+
 ## 2026-11-11 10:48 EST — `bugfix_achievement_toast_covers_ending_title` (v0.3.3)
 
 Achievement toasts no longer cover the big title on the ending card.

@@ -57,6 +57,9 @@ var hint: Sprite2D
 var guards: Array = []
 var stealth := false
 var alert := 0.0
+## Seconds after being caught during which guards can't raise the alert, so
+## a fight that ends in their sight doesn't start straight over again.
+var stealth_grace := 0.0
 var alert_bar: Control
 var spotted_once := false
 
@@ -599,6 +602,9 @@ func _update_guards(delta: float) -> void:
 		cone.rotation = fwd.angle()
 		if _sees(a, fwd, g.r) and player.visible and not busy:
 			seen = true
+	if stealth_grace > 0.0:
+		stealth_grace -= delta
+		seen = false
 	if seen:
 		alert = minf(1.0, alert + delta * 1.6)
 	else:
@@ -613,6 +619,18 @@ func _update_guards(delta: float) -> void:
 				who = g.actor
 		if handler.has_method("spotted"):
 			run(handler.spotted.bind(who))
+
+
+func reset_guard(a: Actor) -> void:
+	## Puts a patrolling guard back at the start of its round.
+	for g in guards:
+		if g.actor == a:
+			a.position = tile_center(a.home_tile)
+			g.i = 0
+			g.wait = a.info.get("pause", 1.2)
+			if g.pts.size() > 1:
+				a.face_toward(g.pts[1])
+			return
 
 
 func _sees(a: Actor, fwd: Vector2, r: float) -> bool:

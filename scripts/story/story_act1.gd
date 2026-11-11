@@ -830,11 +830,18 @@ func _s2_spotted(who: Actor) -> void:
 	if res.outcome == "defeat":
 		Game.set_flag("injured")
 		await s.narrate("Rook takes a spear-butt to the ribs and rolls under a wagon. In the dark, one more shadow is easy to lose.")
-	# the guard who saw him goes off to raise the alarm the wrong way
+	# the guard who saw him goes back to his round, and Rook circles back to
+	# the dark edge of the camp where he came in (the screen is still dark
+	# after the fight, so nobody sees anyone move); the lanterns need a few
+	# seconds to settle before anyone can spot him again
 	if who and is_instance_valid(who):
-		who.position = s.w.tile_center(who.home_tile)
+		s.w.reset_guard(who)
+	r.position = s.w.tile_center(Vector2i(1, 9))
+	r.face(2)
 	r.set_pose("sneak")
 	s.w.alert = 0.0
+	s.w.stealth_grace = 4.0
+	await s.think("Back to the edge of the camp, where the lantern light gives out. Slower, this time.")
 
 
 # ======================================================================

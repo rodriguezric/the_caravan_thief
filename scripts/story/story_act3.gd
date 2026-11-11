@@ -592,14 +592,22 @@ func _keystone(res: Dictionary) -> Dictionary:
 	var rk := c.person("rook", Vector2(170, 156), 3, "", "hold_up")
 	rk.set_spec(s.rook_spec())
 	var f := c.person("factor", Vector2(90, 156), 2, "sad", "kneel")
+	# the crew is there from the start, spread out behind Rook
+	var crew := ["mara", "fen", "wick", "bracken"].filter(func(id: String) -> bool: return _here(id))
+	for i in crew.size():
+		c.person(crew[i], Vector2(214 + i * 30, 154), 3)
 	if res.outcome == "defeat":
 		f.set_pose("walk")
+		rk.set_pose("kneel")
+		rk.set_mood("hurt")
 		await s.narrate("Rook is on his knees in the road. The Factor stands over him, dusting off his sleeves, and waits.")
+		# he gets up for this part, blade in hand
+		rk.set_mood("")
+		rk.set_pose("hold_up")
+		rk.hop(4.0)
+		await s.wait(0.4)
 	else:
 		await s.narrate("The Factor kneels in the road. The hunters have fled. The wind has stopped, as if the pass were holding its breath.")
-	for id in ["mara", "fen", "wick", "bracken"]:
-		if _here(id):
-			c.person(id, Vector2(230 + ["mara", "fen", "wick", "bracken"].find(id) * 22, 154), 3)
 	await s.say("blade", "Choose.")
 	await s.narrate("Everything comes to this. What he takes. What he keeps. What he owns.")
 	var opts := []

@@ -70,11 +70,12 @@ func scene_s9() -> Variant:
 	await s.pan(Vector2i(26, 7), 1.0)
 	await s.narrate("On the far side: the Factor, two hunters, and a strongbox wagon flying Ollo's colours. The caravan payroll, crossing under escort.")
 	await s.pan_back(0.8)
-	if Game.flag("trade_agreed") and not Game.run.kills.has("fen"):
+	var trade: bool = Game.flag("trade_agreed") and not Game.run.kills.has("fen")
+	if trade:
 		await s.say("fen", "Walk with me, son. Slow. We hand it over and we never look back.", "")
 		await s.walk("fen", [Vector2i(9, 6), Vector2i(13, 6)], 26.0)
+		_s9_crew_onto_deck(false)
 		await s.walk("player", [Vector2i(13, 7)], 30.0)
-		var f := s.a("factor")
 		await s.walk("factor", [Vector2i(18, 7)], 26.0)
 		await s.say("factor", "Old Fen. You did the sum.", "smile")
 		await s.say("fen", "Every man walks home. That's the price. The sword for every man walking home.", "")
@@ -82,6 +83,12 @@ func scene_s9() -> Variant:
 		await s.wait(0.4)
 		await s.say("factor", "...I'm afraid I lied about the 'no one else.' Ledgers must balance, you see.", "")
 	else:
+		# out onto the planks together, and he comes to meet them halfway
+		_s9_crew_onto_deck(true)
+		s.walk("factor", [Vector2i(18, 7)], 26.0)
+		await s.walk("player", [Vector2i(13, 7)], 30.0)
+		await s.wait(0.6)
+		s.face("player", 2)
 		await s.say("factor", "You came. Good. I do so hate chasing.", "smile")
 		await s.say("factor", "Return what is kept, bearer, and these people may go home.", "")
 		await s.say("rook", "And if I don't?", "determined")
@@ -100,6 +107,9 @@ func scene_s9() -> Variant:
 	if s.a("mara"):
 		s.a("mara").set_pose("aim")
 	s.omen_pulse()
+	# his part is done: he turns his back on it and strolls off toward the wagon
+	s.face("factor", 2)
+	s.walk("factor", [Vector2i(26, 7)], 18.0)
 	await s.say("blade", "Now. Choose what you're reaching for.")
 	var opts := ["Get the crew across. Everyone.", "The payroll wagon. Take it.", "The Factor. End this now."]
 	var r := await s.choose("Hunters on the ropes, the crew on the planks, the payroll on the far side, and the Factor walking calmly away.", opts)
@@ -123,6 +133,17 @@ func scene_s9() -> Variant:
 			res = await _s9_pursue()
 	await _s9_after(res)
 	return "S10"
+
+
+func _s9_crew_onto_deck(with_fen: bool) -> void:
+	## The crew follows Rook out onto the bridge deck (rows 6-7), a few planks
+	## behind him, so the ambush catches them on the planks. Not awaited.
+	var spots := {"bracken": Vector2i(10, 7), "wick": Vector2i(9, 7), "mara": Vector2i(9, 6)}
+	if with_fen:
+		spots["fen"] = Vector2i(11, 6)
+	for id in spots:
+		if s.a(id):
+			s.walk(id, [spots[id]], 26.0)
 
 
 func _crew_units() -> Array:

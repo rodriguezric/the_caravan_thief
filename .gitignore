@@ -8,3 +8,4 @@ exports/
 *.translation
 export.cfg
 export_presets.cfg
+__pycache__/

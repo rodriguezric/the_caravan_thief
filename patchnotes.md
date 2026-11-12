@@ -1,5 +1,28 @@
 # Patch Notes
 
+## 2026-11-12 03:28 EST — `feature_chipwave_songs` (v0.4.0)
+
+A composed soundtrack: every music cue is now an ambient spaghetti-western
+song instead of the generated chiptune.
+
+- 16 cues, each written for its moment: a whistled version of the Sword
+  Stories theme on the title (and in D major for the ending), a harmonica and
+  hoof gallop on the road, a border-town trumpet waltz, harmonica and crickets
+  by the camp fire, pizzicato twang for heists, a pocket-watch tick for
+  tension, a whole-tone whistle and mission bell for the cursed blade, a
+  harmonica waltz for loss, a twang-and-trumpet gallop for battles, an
+  E Phrygian-dominant boss theme with choir, anvil and whips, a quick
+  minigame tune, a victory fanfare that plays once before its loop, and
+  buzzards on defeat.
+- Shipped as Ogg Vorbis (about 7.3 MB for all 16, against roughly 60 MB
+  as WAV).
+- Code: `music/<cue>.py` builds `music/<cue>.chipwave` with `mt` and renders
+  `music/<cue>.ogg` (`western_kit.py`, `story_kit.py`, `measure.py`,
+  `music/README.md`). `Sfx.music()` loads `res://music/<cue>.ogg`, loops it
+  (`LOOP_FROM` gives victory's loop point after the fanfare) and falls back to
+  the songs.gd generator for a cue without one; `prerender()` skips composed
+  cues. The recipe is `midi_maker/recipes/western_ambient.md`.
+
 ## 2026-11-11 12:30 EST — `bugfix_stealth_caught_fight_loop` (v0.3.16)
 
 Getting caught sneaking through the S2 camp no longer traps you in a loop of

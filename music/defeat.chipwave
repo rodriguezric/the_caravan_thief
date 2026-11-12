@@ -1,0 +1,107 @@
+{
+  "chipwave": 1,
+  "title": "Buzzards",
+  "bpm": 60,
+  "bars": 16,
+  "seed": 11,
+  "master": {"gain": 2, "drive": 1},
+  "instruments": {
+    "bass": {"wave": "tri", "vol": 0.15, "attack": 0.005, "decay": 0.25, "sus": 0.6, "release": 0.1},
+    "drone": {"wave": "saw", "vol": 0.05, "attack": 0.8, "decay": 0.5, "sus": 1, "release": 1, "vib": 0.002, "vib_rate": 0.4},
+    "harmonica": {"vol": 0.07, "attack": 0.05, "decay": 0.15, "sus": 0.8, "release": 0.12, "vib": 0.012, "vib_rate": 6.5},
+    "whistle": {"wave": "sin", "vol": 0.1, "attack": 0.05, "decay": 0.1, "sus": 0.9, "release": 0.25, "vib": 0.009, "vib_rate": 5.2},
+    "kit": {"type": "kit", "vol": 0.6, "drums": {
+      "wind": {"len": 1.6, "noise": 1, "noise_lp": 0.035, "env": "arch", "gain": 0.4}
+    }}
+  },
+  "tracks": [
+    {"name": "harmonica", "instrument": "harmonica", "patterns": {
+      "A": {"events": [
+        {"t": 0, "d": 1.88, "n": 71, "v": 0.9},
+        {"t": 2, "d": 0.92, "n": 67, "v": 0.9},
+        {"t": 3, "d": 0.92, "n": 64, "v": 0.9}
+      ]},
+      "B": {"events": [
+        {"t": 0, "d": 2.88, "n": 66, "v": 0.9, "slide": -1.5}
+      ]},
+      "C": {"events": [
+        {"t": 0, "d": 1.88, "n": 67, "v": 0.9},
+        {"t": 2, "d": 0.92, "n": 64, "v": 0.9},
+        {"t": 3, "d": 0.92, "n": 60, "v": 0.9}
+      ]},
+      "D": {"events": [
+        {"t": 0, "d": 3.88, "n": 64, "v": 0.9, "slide": -1.5}
+      ]},
+      "E": {"events": [
+        {"t": 0, "d": 1.88, "n": 69, "v": 0.9},
+        {"t": 2, "d": 0.92, "n": 72, "v": 0.9},
+        {"t": 3, "d": 0.92, "n": 71, "v": 0.9}
+      ]},
+      "F": {"events": [
+        {"t": 0, "d": 2.88, "n": 69, "v": 0.9, "slide": -1.5}
+      ]},
+      "G": {"events": [
+        {"t": 0, "d": 1.88, "n": 66, "v": 0.9},
+        {"t": 2, "d": 0.92, "n": 69, "v": 0.9},
+        {"t": 3, "d": 0.92, "n": 71, "v": 0.9}
+      ]},
+      "H": {"events": [
+        {"t": 0, "d": 3.88, "n": 63, "v": 0.9, "slide": -1.5}
+      ]},
+      "I": {"events": [
+        {"t": 0, "d": 1.88, "n": 76, "v": 0.9},
+        {"t": 2, "d": 0.92, "n": 71, "v": 0.9},
+        {"t": 3, "d": 0.92, "n": 67, "v": 0.9}
+      ]},
+      "J": {"events": [
+        {"t": 0, "d": 1.38, "n": 67, "v": 0.9},
+        {"t": 1.5, "d": 0.46, "n": 69, "v": 0.9},
+        {"t": 2, "d": 0.92, "n": 71, "v": 0.9},
+        {"t": 3, "d": 0.92, "n": 67, "v": 0.9}
+      ]},
+      "K": {"events": [
+        {"t": 0, "d": 1.88, "n": 72, "v": 0.9},
+        {"t": 2, "d": 1.88, "n": 69, "v": 0.9}
+      ]},
+      "L": {"events": [
+        {"t": 0, "d": 1.88, "n": 71, "v": 0.9},
+        {"t": 2, "d": 1.88, "n": 63, "v": 0.9, "slide": -1.5}
+      ]},
+      "M": {"events": [
+        {"t": 0, "d": 3.88, "n": 64, "v": 0.9}
+      ]}
+    }, "order": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "B", "J", "D", "K", "L", "M", "."]},
+    {"name": "whistle", "instrument": "whistle", "patterns": {
+      "A": {"events": [
+        {"t": 1, "d": 1.6, "n": 88, "v": 0.45, "slide": -5},
+        {"t": 3, "d": 1, "n": 86, "v": 0.3, "slide": -5}
+      ]}
+    }, "order": [".", ".", "A", ".", ".", ".", ".", ".", ".", ".", "A", ".", ".", ".", ".", "."]},
+    {"name": "drone", "instrument": "drone", "patterns": {
+      "A": {"events": [
+        {"t": 0, "d": 15.8, "n": 40, "v": 0.8},
+        {"t": 0, "d": 15.8, "n": 47, "v": 0.6}
+      ]}
+    }, "order": ["A", ".", ".", ".", "A", ".", ".", ".", "A", ".", ".", ".", "A", ".", ".", "."]},
+    {"name": "bass", "instrument": "bass", "patterns": {
+      "A": {"events": [
+        {"t": 0, "d": 3.6, "n": 40, "v": 0.7}
+      ]},
+      "B": {"events": [
+        {"t": 0, "d": 3.6, "n": 48, "v": 0.7}
+      ]},
+      "C": {"events": [
+        {"t": 0, "d": 3.6, "n": 45, "v": 0.7}
+      ]},
+      "D": {"events": [
+        {"t": 0, "d": 3.6, "n": 47, "v": 0.7}
+      ]}
+    }, "order": ["A", ".", "B", ".", "C", ".", "D", ".", "A", ".", "B", ".", "C", ".", "A", "."]},
+    {"name": "drums", "instrument": "kit", "patterns": {
+      "A": {"events": [
+        {"t": 0, "drum": "wind", "v": 0.8}
+      ]}
+    }, "order": ["A", ".", ".", ".", "A", ".", ".", ".", "A", ".", ".", ".", "A", ".", ".", "A"]}
+  ],
+  "meta": {"key": "E minor", "chords": ["Em", "Em", "C", "C", "Am", "Am", "B", "B", "Em", "Em", "C", "C", "Am", "B", "Em", "Em"], "notes": "Defeat (The Caravan Thief), recipes/western_ambient.md. Falling harmonica, E-B drone, wind, buzzard cries. Ends on Em."}
+}

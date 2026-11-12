@@ -1,12 +1,15 @@
 extends Node
 ## Every sound is synthesized: effects from tones and noise, voices as tiny
-## blips, and the music by a small sequencer that writes looping chiptune
-## tracks from a few parameters per song (rendered off the main thread where
-## threads exist). Audio goes through Music / SFX / Voice buses so the settings
+## blips. Music is the composed western score in res://music/<cue>.ogg (built
+## from <cue>.chipwave by music/<cue>.py, see music/README.md); a cue with no
+## .ogg falls back to the small sequencer in songs.gd, rendered off the main
+## thread where threads exist. Audio goes through Music / SFX / Voice buses so the settings
 ## sliders can drive them.
 
 const RATE := 22050
 const MUSIC_DB := -8.0
+## Cues whose first bars play once (a fanfare): the loop restarts here, in seconds.
+const LOOP_FROM := {"victory": 3.871}
 
 ## Per-speaker typewriter voices: [wave, base pitch, volume db].
 const VOICES := {
@@ -118,6 +121,10 @@ func music(name: String, fade: float = 1.0, vol: float = MUSIC_DB) -> void:
 		_music_tween.tween_callback(old.stop)
 	if name == "" or muted_music:
 		return
+	if not songs.has(name):
+		var ogg := _load_ogg(name)
+		if ogg:
+			songs[name] = ogg
 	if songs.has(name):
 		_start_song(name, fade, vol)
 	else:
@@ -133,6 +140,19 @@ func _start_song(name: String, fade: float, vol: float) -> void:
 	new_p.play()
 	var t := create_tween()
 	t.tween_property(new_p, "volume_db", vol, fade * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+func _load_ogg(name: String) -> AudioStream:
+	## The composed cue, looping (from LOOP_FROM after a once-only intro).
+	var path := "res://music/%s.ogg" % name
+	if not ResourceLoader.exists(path):
+		return null
+	var s := load(path) as AudioStreamOggVorbis
+	if s == null:
+		return null
+	s.loop = true
+	s.loop_offset = float(LOOP_FROM.get(name, 0.0))
+	return s
 
 
 func _render_song_async(name: String, fade: float, vol: float) -> void:
@@ -168,6 +188,8 @@ func prerender(names: Array) -> void:
 	if not OS.has_feature("threads") or OS.has_feature("web"):
 		return
 	for n in names:
+		if not songs.has(n) and ResourceLoader.exists("res://music/%s.ogg" % n):
+			continue   # composed cues load on demand (streamed, no render)
 		if not songs.has(n) and not _pending.has(n):
 			var def := Songs.get_def(n)
 			if def.is_empty():

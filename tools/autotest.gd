@@ -12,6 +12,14 @@ extends Node
 ##   talk:<gate|factor>  that persuade fight; ACT > Talk opened and screenshot
 ##   minigame:<kind>  one minigame (real logic, random presses)
 ##   s9after:<branch> the Gorge Bridge aftermath alone (protect, payroll, pursue)
+##   stealth          S2: walk into a lantern, fight, then check Rook isn't
+##                    re-spotted while he hides (CT_HIDE_SECS, default 6);
+##                    walk into one again and check the second catch is the
+##                    dragged-out scene, not another fight. Prints PASS/FAIL.
+## The story runner also watches transitions: a field frame shown for under
+## CT_FLASH_MAX seconds (default 0.8) between a battle, minigame or cutscene
+## and the next cutscene is printed as "[auto] FLASH" (a field flash).
+##   flashcheck       self-test: stages one field flash; the watcher must catch it
 ##   cine:<name>      a backdrop, screenshot
 ##   touch            by touch: the field layout, the lock watchdog, drag
 ##                    scrolling in Settings/Achievements, a tap-the-screen minigame
@@ -66,6 +74,142 @@ func tap(action: String, t: float = 0.25) -> void:
 	await wait(t)
 
 
+# ------------------------------------------------------------ transitions --
+
+var flashes: Array = []
+
+
+func _cover() -> String:
+	## What is hiding the field this frame ("" = the field is on screen).
+	if main.fade_rect.color.a >= 0.5:
+		return "fade"
+	var wipe_mat := main.wipe.material as ShaderMaterial
+	if wipe_mat:
+		var pv = wipe_mat.get_shader_parameter("progress")
+		if pv != null and float(pv) >= 0.5:
+			return "wipe"
+	for b in main.battle_layer.get_children():
+		if b is Battle:
+			return "battle"
+	for c in main.cine_layer.get_children():
+		if c is CanvasItem and (c as CanvasItem).visible and (c as CanvasItem).modulate.a >= 0.5:
+			if c is Minigame:
+				return "minigame"
+			if c is Cinema:
+				return "cine"
+			return "card"
+	if main.world == null or not is_instance_valid(main.world) or not main.world.visible:
+		return "noworld"
+	return ""
+
+
+func _watch_transitions() -> void:
+	## Flags field flashes: the field on screen for a moment between a battle,
+	## minigame or cutscene and the next cutscene.
+	var limit := float(OS.get_environment("CT_FLASH_MAX")) if OS.get_environment("CT_FLASH_MAX") != "" else 0.8
+	var last := "noworld"
+	var shown_at := -1.0
+	var before := ""
+	while true:
+		await get_tree().process_frame
+		var now := Time.get_ticks_msec() / 1000.0
+		var c := _cover()
+		if c == "" and last != "":
+			shown_at = now
+			before = last
+		elif c != "" and last == "":
+			var dur := now - shown_at
+			if dur < limit and before in ["battle", "minigame", "cine", "wipe"] and c == "cine":
+				var msg := "%s: field shown %.2fs between %s and %s" % [Game.run.get("scene", "?"), dur, before, c]
+				flashes.append(msg)
+				print("[auto] FLASH ", msg)
+				if out != "":
+					shot("flash_%02d" % flashes.size())
+		last = c
+
+
+# ---------------------------------------------------------------- stealth --
+
+func _stealth_test() -> void:
+	## Plays S2's caught paths and checks them (see the header).
+	var hide_secs := float(OS.get_environment("CT_HIDE_SECS")) if OS.get_environment("CT_HIDE_SECS") != "" else 6.0
+	var fails := []
+	Game.new_run()
+	Game.run.scene = "S2"
+	main.story.prepare_jump("S2")
+	Game.set_flag("ct_hold")
+	_preset()
+	var done := [false]
+	var runner := func() -> void:
+		await main.play_story()
+		done[0] = true
+	runner.call()
+	# wait for the camp, with Rook free to move
+	var w: World = null
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 60000:
+		await get_tree().process_frame
+		w = main.world
+		if w and is_instance_valid(w) and w.def.get("id", "") == "camp" and main.story.roaming and not w.busy:
+			break
+	if w == null or w.def.get("id", "") != "camp":
+		print("[auto] stealth FAIL: never reached the camp")
+		return
+	# 1. into the first guard's light
+	var g: Actor = w.actor("g1")
+	var battles := [0]
+	var count_battles := func() -> void:
+		var seen := false
+		while not done[0] and is_instance_valid(w):
+			var inb := false
+			for b in main.battle_layer.get_children():
+				if b is Battle:
+					inb = true
+			if inb and not seen:
+				battles[0] += 1
+			seen = inb
+			await get_tree().process_frame
+	count_battles.call()
+	t0 = Time.get_ticks_msec()
+	while w.spotted_count == 0 and Time.get_ticks_msec() - t0 < 15000:
+		if not w.busy:
+			w.player.position = g.position + Actor.DIRS[g.dir] * 24.0
+		await get_tree().process_frame
+	if w.spotted_count == 0:
+		fails.append("not spotted standing in a lantern")
+	# let the fight and the hiding beat play out
+	t0 = Time.get_ticks_msec()
+	while (w.busy or battles[0] == 0 or main.dialog.visible) and Time.get_ticks_msec() - t0 < 120000:
+		await get_tree().process_frame
+	await shot("stealth_hidden")
+	if battles[0] != 1:
+		fails.append("expected one fight after the first catch, saw %d" % battles[0])
+	# 2. stay hidden: nobody may spot him
+	var spots := w.spotted_count
+	await wait(hide_secs)
+	if w.spotted_count != spots:
+		fails.append("re-spotted within %.0fs of hiding (%d more)" % [hide_secs, w.spotted_count - spots])
+	print("[auto] stealth: hid %.0fs, spotted %d time(s) so far" % [hide_secs, w.spotted_count])
+	# 3. the second catch: the dragged-out scene, not another fight
+	t0 = Time.get_ticks_msec()
+	while not Game.flag("in_wagon") and Time.get_ticks_msec() - t0 < 120000 and is_instance_valid(w):
+		if not w.busy and is_instance_valid(g):
+			w.player.position = g.position + Actor.DIRS[g.dir] * 24.0
+		await get_tree().process_frame
+	if not Game.flag("in_wagon"):
+		fails.append("the second catch never got Rook into the wagon")
+	if battles[0] != 1:
+		fails.append("the second catch started a fight (%d fights in all)" % battles[0])
+	for f in ["noise", "injured"]:
+		if not Game.flag(f):
+			fails.append("flag %s not set after the second catch" % f)
+	if fails.is_empty():
+		print("[auto] stealth PASS")
+	else:
+		for f in fails:
+			print("[auto] stealth FAIL: ", f)
+
+
 func _preset() -> void:
 	for kv in OS.get_environment("CT_STATE").split(",", false):
 		if kv.contains(":"):
@@ -93,8 +237,31 @@ func _preset() -> void:
 
 func _run(scenario: String) -> void:
 	var every := float(OS.get_environment("CT_SHOT_EVERY")) if OS.get_environment("CT_SHOT_EVERY") != "" else 0.0
+	if scenario == "flashcheck":
+		# self-test for the transition watcher: a deliberate field flash
+		# between two cutscenes must be caught
+		Game.new_run()
+		main.load_map(main.story.acts.act3.gorge_map(), Vector2i(6, 7), 2)
+		main.fade_rect.color.a = 0.0
+		_watch_transitions()
+		var a := Cinema.open()
+		a.show_bg("gorge", 0, 0.0)
+		await wait(0.5)
+		a.queue_free()
+		await wait(0.25)
+		var b := Cinema.open()
+		b.show_bg("bridge_near", 0, 0.0)
+		await wait(0.5)
+		print("[auto] flashcheck %s (%d flash(es) caught)" % ["PASS" if flashes.size() == 1 else "FAIL", flashes.size()])
+		get_tree().quit()
+		return
+	if scenario == "stealth":
+		await _stealth_test()
+		get_tree().quit()
+		return
 	if scenario == "story":
 		prefix = "story"
+		_watch_transitions()
 		Game.new_run()
 		var sc := OS.get_environment("CT_SCENE")
 		if sc != "":
@@ -108,6 +275,7 @@ func _run(scenario: String) -> void:
 		shooting = false
 		print("[auto] story done in %.1fs; endings: %s" % [(Time.get_ticks_msec() - t0) / 1000.0, ", ".join(Game.profile.endings.keys())])
 		print("[auto] vars: ", Game.profile.last_route.get("vars", {}), "  achievements: ", Game.achieved.size())
+		print("[auto] transitions: %d field flash(es)" % flashes.size())
 		get_tree().quit()
 		return
 	if scenario.begins_with("talk:"):

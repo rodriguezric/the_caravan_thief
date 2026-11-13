@@ -62,6 +62,8 @@ var alert := 0.0
 var stealth_grace := 0.0
 var alert_bar: Control
 var spotted_once := false
+## How many times the guards have raised the alarm on this map (tests read it).
+var spotted_count := 0
 ## How fast the alert drains when nobody's looking (per second).
 var alert_decay := 0.5
 
@@ -615,6 +617,7 @@ func _update_guards(delta: float) -> void:
 	if alert >= 1.0 and not busy:
 		alert = 0.0
 		spotted_once = true
+		spotted_count += 1
 		var who: Actor = null
 		for g in guards:
 			if _sees(g.actor, Actor.DIRS[(g.actor as Actor).dir], g.r):

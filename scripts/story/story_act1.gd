@@ -1390,6 +1390,9 @@ func autoplay() -> void:
 					await _listen(id)
 					return
 		"S2":
+			if Game.flag("ct_hold"):
+				# the stealth test steers Rook itself
+				return
 			if Game.flag("ct_caught"):
 				# test runs (CT_STATE=ct_caught): step into a lantern and
 				# wait to be seen, so the caught paths get played

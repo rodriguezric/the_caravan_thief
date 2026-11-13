@@ -1,5 +1,25 @@
 # Patch Notes
 
+## 2026-11-12 20:28 EST — `feature_stealth_and_transition_autotests` (v0.10.0)
+
+Automated tests for stealth catches and field flashes between scenes.
+
+- New `CT_TEST=stealth` scenario: in S2, walks Rook into a lantern and checks
+  that exactly one fight happens and that he isn't re-spotted while hiding
+  (`CT_HIDE_SECS`, default 6). It then walks him into a lantern again and
+  checks the second catch is the dragged-out scene, not a second fight, and
+  that it gets him into the cream wagon with `noise` and `injured` set.
+  Prints `[auto] stealth PASS` or one FAIL line per problem.
+- The `story` runner now watches transitions every frame. If the field shows
+  for less than `CT_FLASH_MAX` seconds (default 0.8) between a battle,
+  minigame or cutscene and the next cutscene, it prints `[auto] FLASH`, takes
+  a screenshot (with `CT_OUT`) and counts the flash in a closing
+  `[auto] transitions:` line. A full autoplay run currently reports 0.
+- `CT_TEST=flashcheck` stages one such flash to prove the watcher catches it.
+- `tools/autotest.gd`: `_stealth_test()`, `_watch_transitions()`, `_cover()`.
+  `scripts/world.gd`: `spotted_count`. `scripts/story/story_act1.gd`: the S2
+  autoplay steps aside when the `ct_hold` flag is preset.
+
 ## 2026-11-12 20:14 EST — `feature_close_bridge_backdrop_for_character_shots` (v0.9.0)
 
 A close-up Gorge Bridge backdrop, so the S9 aftermath happens on the bridge

@@ -62,6 +62,8 @@ var alert := 0.0
 var stealth_grace := 0.0
 var alert_bar: Control
 var spotted_once := false
+## How fast the alert drains when nobody's looking (per second).
+var alert_decay := 0.5
 
 
 func setup(map_def: Dictionary, tile: Vector2i, facing: int, p_handler: Object) -> void:
@@ -608,7 +610,7 @@ func _update_guards(delta: float) -> void:
 	if seen:
 		alert = minf(1.0, alert + delta * 1.6)
 	else:
-		alert = maxf(0.0, alert - delta * 0.5)
+		alert = maxf(0.0, alert - delta * alert_decay)
 	_draw_alert()
 	if alert >= 1.0 and not busy:
 		alert = 0.0
@@ -619,6 +621,18 @@ func _update_guards(delta: float) -> void:
 				who = g.actor
 		if handler.has_method("spotted"):
 			run(handler.spotted.bind(who))
+
+
+func raise_alertness(speed_k: float = 1.35, vision_k: float = 1.15, decay: float = 0.3) -> void:
+	## The camp is awake: every patrol walks faster, sees further, and the
+	## alert drains more slowly.
+	alert_decay = decay
+	for g in guards:
+		g.speed = float(g.speed) * speed_k
+		g.r = float(g.r) * vision_k
+		(g.cone as Sprite2D).texture = Art.cone(int(g.r), Pal.CANDLE.lerp(Pal.LEMON, 0.3))
+		(g.cone as Sprite2D).offset = Vector2(0, -g.r / 2.0)
+		g.wait = minf(float(g.wait), 0.6)
 
 
 func reset_guard(a: Actor) -> void:

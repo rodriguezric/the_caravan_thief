@@ -1,5 +1,23 @@
 # Patch Notes
 
+## 2026-11-12 19:46 EST — `feature_stealth_caught_consequence` (v0.6.0)
+
+Getting caught at the Dry Well now has consequences instead of repeating the
+same fight.
+
+- First catch: the escape fight as before, then Rook comes to hidden behind
+  the west wagon and the camp is awake: a fourth lantern guard walks the
+  middle of the camp, every patrol walks faster and sees further, and the eye
+  meter drains more slowly.
+- Second catch: no second fight. The guards drag Rook to the fire, Wick
+  stampedes the oxen from the dark, and in the chaos Rook cuts his way into
+  the cream wagon: flags `injured` and `noise`, then on to S3. This also ends
+  any chance of a caught-fight loop.
+- `scripts/world.gd`: `alert_decay`, `raise_alertness()`.
+  `scripts/story/story_act1.gd`: `_s2_spotted()` split into a first catch
+  and `_s2_dragged_out()`; S2 autoplay with `CT_STATE=ct_caught` walks Rook
+  into a lantern so test runs play both catches.
+
 ## 2026-11-12 19:35 EST — `feature_dont_show_sword_portrait` (v0.5.0)
 
 The blade's lines no longer show a portrait.

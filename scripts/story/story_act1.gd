@@ -812,6 +812,9 @@ func _s2_lock() -> void:
 
 
 func _s2_spotted(who: Actor) -> void:
+	if Game.flag("s2_caught"):
+		await _s2_dragged_out(who)
+		return
 	Game.set_flag("s2_caught")
 	var r := s.a("player")
 	if who:
@@ -830,18 +833,123 @@ func _s2_spotted(who: Actor) -> void:
 	if res.outcome == "defeat":
 		Game.set_flag("injured")
 		await s.narrate("Rook takes a spear-butt to the ribs and rolls under a wagon. In the dark, one more shadow is easy to lose.")
-	# the guard who saw him goes back to his round, and Rook circles back to
-	# the dark edge of the camp where he came in (the screen is still dark
-	# after the fight, so nobody sees anyone move); the lanterns need a few
-	# seconds to settle before anyone can spot him again
+	# the guard who saw him goes back to his round, and Rook ends up hidden
+	# behind the west wagon (the screen is still dark after the fight, so
+	# nobody sees anyone move). The camp is awake now: an extra lantern walks
+	# the middle of the camp, the patrols are quicker and the alert lingers.
 	if who and is_instance_valid(who):
 		s.w.reset_guard(who)
-	r.position = s.w.tile_center(Vector2i(1, 9))
-	r.face(2)
-	r.set_pose("sneak")
+	r.position = s.w.tile_center(S2_HIDE)
+	r.face(1)
+	r.set_pose("crouch")
+	if s.w.actor("g4") == null:
+		s.spawn("guard", Vector2i(13, 8), 2, {"id": "g4", "patrol": [Vector2i(13, 8), Vector2i(13, 12)], "vision": 50, "pause": 0.8})
+	s.w.raise_alertness()
 	s.w.alert = 0.0
 	s.w.stealth_grace = 4.0
-	await s.think("Back to the edge of the camp, where the lantern light gives out. Slower, this time.")
+	s.sfx("crowd", 1.2, -10.0)
+	await s.think(["Behind the west wagon, in the dark, with his heart going like a drum.",
+		"The whole camp's awake now. Another lantern on the rounds, and they're walking faster. Get caught again and there won't be a fight. There'll be a rope."])
+	r.set_pose("sneak")
+
+
+## Where Rook hides after the first catch: in the wagon's shadow, out of the
+## north patrol's light.
+const S2_HIDE := Vector2i(6, 8)
+
+
+func _s2_dragged_out(who: Actor) -> void:
+	## Second catch: no second fight. The guards drag him to the fire, Wick
+	## turns the camp upside down, and Rook gets into the cream wagon the ugly
+	## way, bruised and loud.
+	var w := s.w
+	w.stealth = false
+	w.alert = 0.0
+	if w.alert_bar:
+		w.alert_bar.visible = false
+	var r := s.a("player")
+	if who == null or not is_instance_valid(who):
+		who = w.actor("g1")
+	s.sfx("alert", 1.0, -2.0)
+	who.emote("!")
+	who.face_toward(r.position)
+	r.jump_back()
+	await s.say("guard", "HIM again! Don't let him run this time!", "angry")
+	# the guard closes in and grabs him
+	var grab := create_tween()
+	grab.tween_property(who, "position", r.position + (who.position - r.position).limit_length(12.0), 0.35)
+	await grab.finished
+	s.sfx("hit", 0.8, -6.0)
+	s.shake(2.0, 0.3)
+	r.set_pose("hurt")
+	Game.set_flag("injured")
+	await s.narrate("A hand in his collar, a knee in his back. The lantern swings so close he can feel it on his face.")
+	# dragged to the fire
+	var fire := w.tile_center(Vector2i(17, 11))
+	var drag := create_tween().set_parallel(true)
+	drag.tween_property(r, "position", fire, 1.4).set_trans(Tween.TRANS_SINE)
+	drag.tween_property(who, "position", fire + Vector2(-12, 0), 1.4).set_trans(Tween.TRANS_SINE)
+	who.moving = true
+	s.pan(fire, 1.0)
+	await drag.finished
+	who.moving = false
+	r.set_pose("kneel")
+	await s.say("guard", "Wake the Factor. He'll want to see what a cream thief looks like before we hang one.", "angry")
+	await s.wait(0.4)
+	# Wick: the loudest possible distraction
+	s.sfx("crash", 1.0, -2.0)
+	s.shake(3.0, 0.6)
+	s.flash(Pal.CANDLE, 0.25)
+	var wick := s.spawn("wick", Vector2i(2, 12), 1, {"id": "wick"})
+	var ox := w.actor("ox")
+	await s.say("wick", "(from the dark) STAMPEDE! Everybody MOVE! The oxen have seen a GHOST!", "shock")
+	s.sfx("crowd", 1.4, -6.0)
+	if ox:
+		ox.visible = true
+		var run_ox := create_tween()
+		run_ox.tween_property(ox, "position", w.tile_center(Vector2i(26, 12)), 1.6)
+		ox.moving = true
+	var run_w := create_tween()
+	run_w.tween_property(wick, "position", w.tile_center(Vector2i(12, 11)), 0.9)
+	wick.moving = true
+	for g in w.guards:
+		var ga: Actor = g.actor
+		if is_instance_valid(ga) and ga.visible:
+			ga.emote("!")
+			ga.face_toward(wick.position)
+	await s.wait(0.9)
+	wick.moving = false
+	# Rook twists free in the confusion
+	who.face_toward(wick.position)
+	r.set_pose("dodge")
+	r.jump_back()
+	await s.say("wick", "Go, GO! I've got them!", "grin")
+	var run_g := create_tween()
+	run_g.tween_property(who, "position", wick.position + Vector2(-20, 0), 0.8)
+	who.moving = true
+	var run_w2 := create_tween()
+	run_w2.tween_property(wick, "position", w.tile_center(Vector2i(2, 14)), 1.0)
+	wick.moving = true
+	r.set_pose("run")
+	var dash := create_tween()
+	dash.tween_property(r, "position", w.tile_center(Vector2i(29, 10)), 1.2).set_trans(Tween.TRANS_SINE)
+	s.pan(w.tile_center(Vector2i(29, 10)), 1.0)
+	await dash.finished
+	s.hide("wick")
+	who.moving = false
+	if ox:
+		ox.moving = false
+	s.hide("h1")
+	r.face(1)
+	r.set_pose("pick")
+	s.sfx("slash", 0.8, -4.0)
+	await s.narrate(["Nobody's watching the cream wagon. Nobody's watching anything but an ox with a lantern on its horns.",
+		"Rook doesn't bother with the lock. A knife through the canvas, a roll, and he's inside, bruised and breathing hard and very, very loud about it."])
+	Game.set_flag("noise")
+	Game.set_flag("approached")
+	Game.choose("Caught twice at the Dry Well; Wick stampeded the oxen to get Rook into the cream wagon.")
+	s.unmarker()
+	Game.set_flag("in_wagon")
 
 
 # ======================================================================
@@ -1282,6 +1390,22 @@ func autoplay() -> void:
 					await _listen(id)
 					return
 		"S2":
+			if Game.flag("ct_caught"):
+				# test runs (CT_STATE=ct_caught): step into a lantern and
+				# wait to be seen, so the caught paths get played
+				var g: Actor = w.actor("g1")
+				w.player.position = g.position + Actor.DIRS[g.dir] * 24.0
+				w.player.visible = true
+				w.release("autoplay")
+				var t := 0.0
+				while is_instance_valid(w) and not w.busy and t < 4.0:
+					await get_tree().process_frame
+					t += get_process_delta_time()
+					if is_instance_valid(g):
+						w.player.position = g.position + Actor.DIRS[g.dir] * 24.0
+				if is_instance_valid(w):
+					w.hold("autoplay")
+				return
 			w.stealth = false
 			if explore_extras() and not Game.flag("looted"):
 				await _s2_examine({"id": "stores"})

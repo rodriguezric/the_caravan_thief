@@ -1,5 +1,15 @@
 # Patch Notes
 
+## 2026-11-12 19:35 EST — `feature_dont_show_sword_portrait` (v0.5.0)
+
+The blade's lines no longer show a portrait.
+
+- When the sword talks, the dialog box keeps its violet "omen" frame, its
+  name tag and its voice, but no portrait frame, so it reads as a voice
+  rather than a face on screen.
+- `scripts/story/story.gd` `speaker("blade")`: dropped the `portrait` and
+  `side` opts.
+
 ## 2026-11-12 03:28 EST — `feature_chipwave_songs` (v0.4.0)
 
 A composed soundtrack: every music cue is now an ambient spaghetti-western

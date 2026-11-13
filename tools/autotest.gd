@@ -11,6 +11,7 @@ extends Node
 ##                    Load Game and New Game's slot lists (needs CT_DIR)
 ##   talk:<gate|factor>  that persuade fight; ACT > Talk opened and screenshot
 ##   minigame:<kind>  one minigame (real logic, random presses)
+##   s9after:<branch> the Gorge Bridge aftermath alone (protect, payroll, pursue)
 ##   cine:<name>      a backdrop, screenshot
 ##   touch            by touch: the field layout, the lock watchdog, drag
 ##                    scrolling in Settings/Achievements, a tap-the-screen minigame
@@ -182,6 +183,25 @@ func _run(scenario: String) -> void:
 			"party": plist, "enemies": enemies})
 		shooting = false
 		print("[auto] battle result: ", r.outcome, " turns ", r.turns)
+		get_tree().quit()
+		return
+	if scenario.begins_with("s9after:"):
+		# just the Gorge Bridge aftermath for one branch (protect, payroll, pursue)
+		prefix = "s9after"
+		Game.new_run()
+		Game.run.scene = "S9"
+		for f in ["has_sword", "mara_joined", "fen_fights"]:
+			Game.set_flag(f)
+		_preset()
+		Game.set_flag("bridge", scenario.substr(8))
+		var a3 = main.story.acts.act3
+		a3.scene = "S9"
+		await main.story.explore(a3.gorge_map(), Vector2i(6, 7), 2)
+		if every > 0.0:
+			_shoot_loop(every)
+		await a3._s9_after({})
+		shooting = false
+		print("[auto] s9after done")
 		get_tree().quit()
 		return
 	if scenario.begins_with("cine:"):

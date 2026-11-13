@@ -32,6 +32,8 @@ static func make(name: String, frame: int) -> PixBuf:
 		"shrine": return shrine(frame)
 		"gorge": return gorge(frame)
 		"gorge_fall": return gorge_fall(frame)
+		"bridge_near": return bridge_near(frame)
+		"bridge_near_fall": return bridge_near_fall(frame)
 		"pass_night": return pass_night(frame)
 		"tomb": return tomb(frame)
 		"pass_dawn": return pass_dawn(frame)
@@ -621,6 +623,109 @@ static func gorge_fall(frame: int) -> PixBuf:
 		var x1 := 199 - k * 2
 		for y in range(66, 66 + 14 + k * 5):
 			b.pset(x1 + int(sin(y * 0.25 - frame - k) * 1.5), y, Pal.CANVAS.lerp(Pal.LEATHER, 0.4))
+	return b
+
+
+## The close bridge shot: people stand on the deck at about y 144.
+const BRIDGE_DECK := 140
+
+
+static func _bridge_deck_y(x: float, frame: int) -> float:
+	## Top of the deck at x: a gentle sag that breathes with the wind.
+	var sag := 4.0 + sin(frame * 0.8) * 1.5
+	return BRIDGE_DECK + sin(clampf(x / W, 0.0, 1.0) * PI) * sag
+
+
+static func bridge_near(frame: int, gap: Vector2i = Vector2i(-1, -1)) -> PixBuf:
+	## Gorge Bridge, close: planks across the lower third, rope rails, the
+	## canyon dropping away behind. `gap` (x0, x1) leaves the middle out for
+	## the rope-snap shot.
+	var b := PixBuf.new(W, H)
+	gradient(b, DAY, 0, 46)
+	# the far wall of the canyon across the drop, banded, hazy with distance
+	for y in range(26, H):
+		for x in W:
+			var top := 34.0 + sin(x * 0.03) * 6.0 + sin(x * 0.11 + 2.0) * 2.0
+			if y < top:
+				continue
+			var depth := float(y - top) / (H - top)
+			var band := (y + int(sin(x * 0.07) * 4.0)) / 5
+			var c: Color = [Pal.DUNE, Pal.CLAY.lerp(Pal.DUNE, 0.5), Pal.SAND.lerp(Pal.DUNE, 0.5)][band % 3]
+			# far away: washed toward the sky at the rim, then the drop's
+			# shadow swallows it long before the bottom
+			c = c.lerp(DAY[1], 0.35 * (1.0 - depth))
+			c = c.lerp(Pal.INK, clampf(pow(depth * 1.35, 1.3), 0.0, 0.96))
+			if Pal.hash2(x / 3, y / 2, 21) > 0.95:
+				c = c.lerp(Pal.INK, 0.25)
+			b.img.set_pixel(x, y, c)
+	# a few wisps of dust drifting in the drop
+	for i in 5:
+		var wx := int(fmod(Pal.hash2(i, 4, 7) * W + frame * 6.0 * (1.0 + i % 2), W))
+		var wy := 70 + int(Pal.hash2(i, 5, 7) * 50)
+		b.rect(wx, wy, 14, 1, Pal.SAND.lerp(Pal.INK, 0.45))
+	var rope := Pal.CANVAS.lerp(Pal.LEATHER, 0.4)
+	var rope_dk := Pal.shade(rope)
+	var wood := Pal.WOOD.lerp(Pal.DUST, 0.2)
+	# the back hand rope and its hangers (behind the people)
+	for x in W:
+		if gap.x >= 0 and x >= gap.x and x <= gap.y:
+			continue
+		var dy := _bridge_deck_y(x, frame)
+		var ry := int(dy - 30 + sin(clampf(float(x) / W, 0.0, 1.0) * PI) * 3.0)
+		b.pset(x, ry, rope)
+		b.pset(x, ry + 1, rope_dk)
+		if x % 26 == 4:
+			b.line(x, ry, x, int(dy), rope_dk)
+	# the deck: planks, each a slightly different board, a dark gap below
+	for x in W:
+		if gap.x >= 0 and x >= gap.x and x <= gap.y:
+			continue
+		var dy := int(_bridge_deck_y(x, frame))
+		var plank := x / 7
+		var pc := wood.lerp(Pal.INK, 0.12 * (plank % 3))
+		if x % 7 == 0:
+			pc = Pal.INK2
+		b.pset(x, dy, Pal.hi(pc) if x % 7 != 0 else pc)
+		b.pset(x, dy + 1, Pal.hi(pc) if x % 7 != 0 else pc)
+		b.rect(x, dy + 2, 1, 7, pc)
+		if Pal.hash2(plank, 1, 31) > 0.6 and x % 7 == 3:
+			b.pset(x, dy + 4, Pal.shade(pc))
+		b.rect(x, dy + 9, 1, 3, Pal.shade(wood).lerp(Pal.INK, 0.5))
+		# the stringer under the planks, and its shadow
+		b.rect(x, dy + 12, 1, 2, Pal.INK.lerp(Pal.WOOD, 0.25))
+	# the front rope, at the deck's lip, with knots at each hanger
+	for x in W:
+		if gap.x >= 0 and x >= gap.x and x <= gap.y:
+			continue
+		var fy := int(_bridge_deck_y(x, frame) + 9)
+		b.pset(x, fy, rope)
+		if x % 26 == 4:
+			b.rect(x - 1, fy - 1, 3, 3, rope_dk)
+	return b
+
+
+static func bridge_near_fall(frame: int) -> PixBuf:
+	## The close bridge after the ropes go: the middle gone, broken planks and
+	## rope ends swinging over the drop.
+	var b := bridge_near(0, Vector2i(122, 206))
+	var rope := Pal.CANVAS.lerp(Pal.LEATHER, 0.4)
+	var wood := Pal.WOOD.lerp(Pal.DUST, 0.2)
+	for k in 4:
+		var x0 := 121 - k * 3
+		var len := 26 + k * 9
+		for i in len:
+			var y := BRIDGE_DECK - 2 + i
+			b.pset(x0 + int(sin(i * 0.15 + frame * 0.9 + k) * (i * 0.08)), y, rope)
+		# a plank still tied to the end of it
+		var py := BRIDGE_DECK - 2 + len
+		var px := x0 + int(sin(len * 0.15 + frame * 0.9 + k) * (len * 0.08))
+		if k % 2 == 0:
+			b.rect(px - 1, py, 3, 7, wood)
+	for k in 3:
+		var x1 := 207 + k * 3
+		var len := 18 + k * 7
+		for i in len:
+			b.pset(x1 + int(sin(i * 0.2 - frame * 0.9 - k) * (i * 0.07)), BRIDGE_DECK - 1 + i, rope)
 	return b
 
 

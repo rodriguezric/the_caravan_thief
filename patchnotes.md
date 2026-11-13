@@ -1,5 +1,24 @@
 # Patch Notes
 
+## 2026-11-12 20:14 EST — `feature_close_bridge_backdrop_for_character_shots` (v0.9.0)
+
+A close-up Gorge Bridge backdrop, so the S9 aftermath happens on the bridge
+itself.
+
+- New `bridge_near` cine: planks across the lower third with a breathing sag,
+  rope rails and hangers, and the canyon's far wall falling away into shadow
+  behind. `bridge_near_fall` is the same shot with the middle gone and rope
+  ends and a plank swinging over the drop.
+- Protect: the crew run across the deck at full size and finish spaced out
+  along it, then hop. Payroll: Rook runs off with the strongbox while Bracken
+  kneels mid-bridge against three hunters; the ropes go and he falls with the
+  nearest one. Pursue: Rook runs at the Factor, the bridge snaps under him,
+  and he ends up hanging from a rope end in the gap.
+- The wide `gorge` picture stays as S9's establishing shot.
+- `scripts/art_cine.gd`: `bridge_near()`, `bridge_near_fall()`,
+  `_bridge_deck_y()`. `scripts/story/story_act3.gd`: `_s9_after()`, `_deck()`.
+  `tools/autotest.gd`: `s9after:<branch>` plays one aftermath alone.
+
 ## 2026-11-12 20:03 EST — `feature_battle_formation_for_large_party` (v0.8.0)
 
 Big parties line up in a readable two-row formation instead of a pile.

@@ -162,7 +162,7 @@ func speaker(who: String, mood: String = "") -> Array:
 		"~":
 			return ["", {"voice": "narrator", "color": Pal.SKY.lerp(Pal.WHITE, 0.45)}]
 		"blade":
-			return ["The Blade", {"portrait": "blade", "voice": "blade", "side": "left", "box": "omen_box", "color": Pal.OMEN.lerp(Pal.WHITE, 0.45)}]
+			return ["The Blade", {"voice": "blade", "box": "omen_box", "color": Pal.OMEN.lerp(Pal.WHITE, 0.45)}]
 		"crew":
 			return ["The Crew", {"portrait": "crew", "voice": "crew", "side": "left"}]
 		"hunters":

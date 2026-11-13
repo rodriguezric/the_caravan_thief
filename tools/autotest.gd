@@ -4,7 +4,7 @@ extends Node
 ##   story            play from CT_SCENE (default P1) to an ending with
 ##                    CT_AUTOPLAY on; CT_CHOICES / CT_ACT / CT_SWORD /
 ##                    CT_EXPLORE steer it. CT_STATE="var=n,flag,!flag,..." presets (!flag clears).
-##   battle:<kind>    a sample battle, screenshots through its animations
+##   battle:<kind>    a sample battle (jackals, hunters, factor, bridge = the S9 lineup), screenshots through its animations
 ##                    (CT_MENUS=1 without CT_AUTOPLAY: screenshots of its menus)
 ##   shell            title, endings, settings, records, achievements
 ##   slots            save slots: the old single save moving into slot 1,
@@ -150,6 +150,9 @@ func _run(scenario: String) -> void:
 				enemies = [BattleDefs.enemy("hunter"), BattleDefs.enemy("hunter_captain"), BattleDefs.enemy("guard")]
 			"factor":
 				enemies = [BattleDefs.enemy("factor")]
+			"bridge":
+				# the S9 lineup: three fighters, AI Wick and Bracken, three hunters
+				enemies = [BattleDefs.enemy("hunter"), BattleDefs.enemy("hunter_captain"), BattleDefs.enemy("hunter", {"spd": 13})]
 		if every > 0.0:
 			_shoot_loop(every)
 		if OS.get_environment("CT_MENUS") != "":
@@ -170,8 +173,13 @@ func _run(scenario: String) -> void:
 					await tap("left")
 				get_tree().quit()
 			peek.call()
-		var r: Dictionary = await main.battle({"id": "test", "title": "A test of steel", "bg": OS.get_environment("CT_BG") if OS.get_environment("CT_BG") != "" else "road",
-			"party": main.story.party(), "enemies": enemies})
+		var plist: Array = main.story.party()
+		if kind == "bridge":
+			if not plist.has("fen"):
+				plist.append("fen")
+			plist.append_array(main.story.acts.act3._crew_units())
+		var r: Dictionary = await main.battle({"id": "test", "title": "A test of steel", "bg": OS.get_environment("CT_BG") if OS.get_environment("CT_BG") != "" else ("bridge" if kind == "bridge" else "road"),
+			"party": plist, "enemies": enemies})
 		shooting = false
 		print("[auto] battle result: ", r.outcome, " turns ", r.turns)
 		get_tree().quit()

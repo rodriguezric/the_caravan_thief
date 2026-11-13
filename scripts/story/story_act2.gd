@@ -811,11 +811,18 @@ func scene_s6() -> Variant:
 	s.sfx("vision", 0.9, -4.0)
 	var rk := c.person("rook", Vector2(200, 158), 3, "sleep", "lie")
 	rk.set_spec(s.rook_spec())
-	var m := c.person("mara", Vector2(40, 156), 2, "omen")
-	await c.walk(m, Vector2(170, 156), 30.0)
-	m.set_pose("reach")
-	s.sfx("heartbeat", 1.0, -2.0)
+	var m := c.person("mara", Vector2(80, 156), 2, "omen")
+	# she crosses while the line is read, rather than in silence before it
+	var crossing := [true]
+	var cross := func() -> void:
+		await c.walk(m, Vector2(170, 156), 48.0)
+		m.set_pose("reach")
+		s.sfx("heartbeat", 1.0, -2.0)
+		crossing[0] = false
+	cross.call()
 	await s.narrate("In the violet dark, Mara crosses the camp without a sound. She kneels beside him. Her hand closes on the hilt at his side.")
+	while crossing[0]:
+		await get_tree().process_frame
 	await s.wait(0.4)
 	await c.close(0.2)
 	s.flash(Pal.OMEN, 0.3)
@@ -862,7 +869,7 @@ func _s6_confront() -> void:
 	s.sfx("whiff", 1.0, -4.0)
 	await s.say("rook", "Looking for something?", "angry")
 	await s.say("mara", "Your waterskin. Mine's empty, and yours was lying in the dirt.", "angry")
-	s.sfx("thud", 1.4, -6.0)
+	await _s6_throw_waterskin()
 	await s.narrate("She throws it at him. It hits him in the chest. It is, in fact, his waterskin.")
 	await s.say("mara", "What did you think I wanted? ...Oh. Oh, I see.", "sad")
 	s.a("mara").face(1)
@@ -872,6 +879,40 @@ func _s6_confront() -> void:
 	fen.set_mood("")
 	await s.say("fen", "Children. Some of us are trying to die of old age.", "")
 	fen.set_pose("lie")
+
+
+func _s6_throw_waterskin() -> void:
+	## Mara lobs Rook's waterskin into his chest; it drops at his feet.
+	var mara := s.a("mara")
+	var r := s.a("player")
+	# a step back first, so the throw has room to arc
+	if mara.position.distance_to(r.position) < 24.0:
+		var back := create_tween()
+		back.tween_property(mara, "position", r.position + (mara.position - r.position).normalized() * 26.0, 0.25)
+		await back.finished
+	mara.face_toward(r.position)
+	mara.set_pose("throw")
+	var skin := Sprite2D.new()
+	skin.texture = Art.prop("waterskin")
+	skin.position = mara.position + Vector2(0, -16)
+	skin.z_index = 5
+	s.w.ents.add_child(skin)
+	var hit := r.position + Vector2(0, -14)
+	var start := skin.position
+	var fly := create_tween()
+	fly.tween_method(func(k: float) -> void:
+		skin.position = start.lerp(hit, k) + Vector2(0, -10.0 * sin(k * PI))
+		skin.rotation = k * TAU * 0.75, 0.0, 1.0, 0.35)
+	await fly.finished
+	s.sfx("thud", 1.4, -6.0)
+	r.shake(0.2)
+	r.jump_back(4.0)
+	var drop := create_tween()
+	drop.tween_property(skin, "position", r.position + Vector2(-8, -3), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	drop.parallel().tween_property(skin, "rotation", PI * 1.5, 0.25)
+	await drop.finished
+	mara.set_pose("walk")
+	skin.z_index = 0
 
 
 func _s6_search() -> void:
@@ -1265,7 +1306,15 @@ func _s8_night() -> void:
 	if w:
 		w.info["wander"] = false
 		await s.walk("player", [Vector2i(17, 4)], 50.0)
-		w.position = s.w.tile_center(Vector2i(16, 4))
+		s.face("player", 3)
+		# Wick crosses the room to him instead of appearing beside him
+		var from := s.w.tile_of(w.position)
+		var path := [Vector2i(16, maxi(from.y, 4)), Vector2i(16, 4)]
+		if from.y > 6:
+			# from the bedrolls: round the fire and Bracken, up the east side
+			path = [Vector2i(from.x, 9), Vector2i(15, 9), Vector2i(15, 4), Vector2i(16, 4)]
+		w.set_pose("walk")
+		await s.walk("wick", path, 40.0)
 		w.face(2)
 		s.face("player", 3)
 		await s.say("wick", "Whatever happens at the bridge. You'll teach me the bow after? The real one?", "smile")

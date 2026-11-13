@@ -51,6 +51,7 @@ static func make(kind: String, v: int = 0) -> PixBuf:
 		"payroll": b = payroll_chest()
 		"fence": b = fence()
 		"stairs": b = stairs()
+		"waterskin": b = waterskin()
 		_:
 			b = PixBuf.new(4, 4)
 	return b
@@ -443,6 +444,21 @@ static func pot(v: int) -> PixBuf:
 	b.rect(4, 2, 4, 3, c)
 	b.rect(3, 2, 6, 1, Pal.hi(c))
 	b.rect(2, 8, 8, 1, Pal.ORANGE.lerp(c, 0.3))
+	return _frame(b)
+
+
+static func waterskin() -> PixBuf:
+	## A leather water bag with a stoppered neck and a strap, thrown in S6.
+	var b := PixBuf.new(12, 12)
+	var c := Pal.WOOD.lerp(Pal.CLAY, 0.35)
+	b.ball(6, 7, 4, 4, c)
+	b.rect(3, 5, 6, 1, Pal.hi(c))
+	b.rect(3, 10, 6, 1, Pal.shade(c))
+	b.rect(5, 1, 2, 3, Pal.shade(c))
+	b.rect(5, 1, 2, 1, Pal.CANVAS)
+	b.pset(2, 4, Pal.shade(Pal.WOOD))
+	b.pset(3, 3, Pal.shade(Pal.WOOD))
+	b.pset(4, 2, Pal.shade(Pal.WOOD))
 	return _frame(b)
 
 

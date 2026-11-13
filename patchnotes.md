@@ -1,5 +1,21 @@
 # Patch Notes
 
+## 2026-11-12 19:59 EST — `feature_s6_vision_pacing_and_props` (v0.7.0)
+
+S6's vision moves while it's narrated, the waterskin is real, and Wick walks
+over in S8.
+
+- S6 vision: Mara starts closer and crosses at 48 px/s while the narration
+  line types, instead of about four silent seconds before it. The heartbeat
+  and her reach land when she arrives.
+- S6 confront: Mara steps back and lobs a small leather waterskin (new
+  `waterskin` prop). It arcs into Rook's chest with a thud and drops at his
+  feet before "It is, in fact, his waterskin."
+- S8 night: Wick walks across the Rookery to sit by Rook at the stairs
+  instead of appearing there.
+- `scripts/story/story_act2.gd`: `scene_s6()`, new `_s6_throw_waterskin()`,
+  `_s8_night()`. `scripts/art_props.gd`: `waterskin()`.
+
 ## 2026-11-12 19:46 EST — `feature_stealth_caught_consequence` (v0.6.0)
 
 Getting caught at the Dry Well now has consequences instead of repeating the

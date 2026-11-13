@@ -260,32 +260,40 @@ func _roll_call(people: Array) -> String:
 	return ", ".join(PackedStringArray(names))
 
 
+func _deck(x: float) -> float:
+	## Where feet go on the bridge_near deck at x.
+	return ArtCine._bridge_deck_y(x, 0) + 3.0
+
+
 func _s9_after(res: Dictionary) -> void:
 	match str(Game.fval("bridge", "")):
 		"protect":
-			var c := await s.cine("gorge", 0.5)
-			c.animate_bg("gorge", 4, 2.0)
+			# the close shot: the deck runs right across the screen, so the
+			# runners are full size and stand on the planks
+			var c := await s.cine("bridge_near", 0.5)
+			c.animate_bg("bridge_near", 4, 2.0)
 			s.music("hope", 1.0)
 			var people := ["rook"]
 			for id in ["fen", "mara", "wick", "bracken"]:
 				if s.a(id) and not Game.flag(id + "_dead"):
 					people.append(id)
-			# across the bridge itself: the deck in the gorge picture runs from
-			# x 40 to 280, sagging from y 70 at the ends to ~82 mid-span, and it
-			# is far off, so the runners are drawn small (1x) and follow the sag
-			var deck := func(x: float) -> float:
-				return 71.0 + sin(clampf((x - 40.0) / 240.0, 0.0, 1.0) * PI) * 12.0
-			for i in people.size():
-				var a := c.person(people[i], Vector2(-12 - i * 20, 71), 2, "", "run", 1.0)
+			var n := people.size()
+			for i in n:
+				var a := c.person(people[i], Vector2(-20 - i * 50, _deck(0.0)), 2, "", "run")
 				if people[i] == "rook":
 					a.set_spec(s.rook_spec())
-				var end_x := 258.0 + (people.size() - 1 - i) * 12.0
+				# the first one in leads furthest; they end spaced along the deck
+				var end_x := 292.0 - i * (200.0 / maxf(1.0, n - 1.0) if n > 4 else 50.0)
 				var pts := []
-				for x in range(40, int(end_x), 12):
-					pts.append(Vector2(x, deck.call(float(x))))
-				pts.append(Vector2(end_x, 71))
-				a.walk_to(pts, 70.0)
-			await s.wait(2.6)
+				for x in range(0, int(end_x), 16):
+					pts.append(Vector2(x, _deck(float(x))))
+				pts.append(Vector2(end_x, _deck(end_x)))
+				a.walk_to(pts, 110.0)
+			await s.wait(3.6)
+			for a in c.actors.get_children():
+				if a is Actor:
+					a.set_pose("walk")
+					a.face(3)
 			if Game.flag("bracken_dead") or Game.flag("wick_dead"):
 				await s.narrate("Not everyone makes the far side. The canyon takes its share, the way it always has.")
 			else:
@@ -296,30 +304,57 @@ func _s9_after(res: Dictionary) -> void:
 			await s.narrate("Behind them, the Factor watches from the far cliff. He raises a hand, politely, and turns away.")
 			await c.close(0.6)
 		"payroll":
-			var c := await s.cine("gorge", 0.5)
+			var c := await s.cine("bridge_near", 0.5)
+			c.animate_bg("bridge_near", 4, 2.0)
 			s.music("sad", 1.0)
+			var br := c.person("bracken", Vector2(166, _deck(166.0)), 3, "laugh", "ready")
+			var hunters := []
+			for hx in [44.0, 82.0, 128.0]:
+				hunters.append(c.person("hunter", Vector2(hx, _deck(hx)), 2, "angry", "ready"))
+			var rk := c.person("rook", Vector2(190, _deck(190.0)), 2, "worried", "carry")
+			rk.set_spec(s.rook_spec())
+			var run := [Vector2(230, _deck(230.0)), Vector2(270, _deck(270.0)), Vector2(298, _deck(298.0))]
+			rk.walk_to(run, 90.0)
 			await s.narrate("He runs with the strongbox in his arms and doesn't look back. Not at the shouting. Not at the sound of the planks.")
+			rk.face(3)
+			br.set_pose("kneel")
 			await s.narrate("When he does look back, Bracken is on his knees in the middle of the bridge, holding three hunters with a cart axle and a grin.")
 			await s.say("bracken", "GO ON, then! Go on, Rook! Buy me a goat!", "laugh")
 			s.sfx("rope_snap", 0.8, -2.0)
 			s.shake(2.0, 0.6)
+			await c.show_bg("bridge_near_fall", 0, 0.15)
+			c.animate_bg("bridge_near_fall", 4, 4.0)
+			# the middle goes: Bracken and the hunter nearest him with it
+			var fall := create_tween().set_parallel(true)
+			for a in [br, hunters[2]]:
+				a.set_pose("hurt")
+				fall.tween_property(a, "position:y", 240.0, 0.9).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			await fall.finished
+			for a in hunters.slice(0, 2):
+				a.jump_back()
 			await s.narrate("Then the ropes on that side go, and the canyon takes the rest.")
 			Game.choose("Bracken held the bridge while Rook ran with the payroll. He fell.")
 			await c.close(0.6)
 		"pursue":
-			var c := await s.cine("gorge", 0.4)
-			c.animate_bg("gorge", 4, 3.0)
-			var f := c.person("factor", Vector2(270, 72), 3)
-			var rk := c.person("rook", Vector2(120, 78), 2, "determined", "run")
+			var c := await s.cine("bridge_near", 0.4)
+			c.animate_bg("bridge_near", 4, 3.0)
+			var f := c.person("factor", Vector2(286, _deck(286.0)), 3)
+			var rk := c.person("rook", Vector2(60, _deck(60.0)), 2, "determined", "run")
 			rk.set_spec(s.rook_spec())
+			await rk.walk_to([Vector2(110, _deck(110.0)), Vector2(160, _deck(160.0))], 110.0)
+			rk.set_pose("ready")
 			await s.say("factor", "You see? It always reaches first. And it always, always falls.", "")
 			s.sfx("rope_snap", 1.0, -2.0)
 			s.shake(3.0, 0.8)
-			await c.show_bg("gorge_fall", 0, 0.2)
-			c.animate_bg("gorge_fall", 4, 4.0)
+			await c.show_bg("bridge_near_fall", 0, 0.2)
+			c.animate_bg("bridge_near_fall", 4, 4.0)
 			rk.set_pose("hurt")
-			await c.walk(rk, Vector2(150, 130), 120.0)
-			rk.set_pose("cower")
+			# down through the gap, until a rope end catches him
+			await c.move(rk, Vector2(120, 182), 0.45, Tween.TRANS_QUAD)
+			# hanging from the snapped rope end, both hands up
+			rk.set_pose("hold_up")
+			c.move(rk, Vector2(122, 180), 0.6)
+			f.face(1)
 			await s.narrate("The bridge drops away beneath him. He catches a rope, the blade in his other hand, swinging over two hundred feet of red air.")
 			await s.narrate("By the time he's climbed back up, the crew is on the far side of the gorge, and the hunters have them.")
 			await s.say("wick", "(far away) ROOK!", "scared")

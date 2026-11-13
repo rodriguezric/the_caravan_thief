@@ -1,5 +1,19 @@
 # Patch Notes
 
+## 2026-11-12 20:03 EST — `feature_battle_formation_for_large_party` (v0.8.0)
+
+Big parties line up in a readable two-row formation instead of a pile.
+
+- In a battle with four or more party units, or any protected AI units (S9's
+  "Ambush on Gorge Bridge!": Rook, Mara, Fen plus Wick and Bracken), the
+  fighters stand in a staggered front row nearest the enemy. The protected
+  units stand in the back row, in the gaps behind them, and everyone shrinks
+  a little as the party grows (1.8x for four, 1.6x for five, 1.45x for six or
+  more), so no one is cut off at the screen edge and every head stays visible.
+- Parties of up to three fighters keep the classic slots and full size.
+- `scripts/battle/battle.gd`: new `Battle.formation()`, used by `_ready()`'s
+  party setup. `tools/autotest.gd`: `battle:bridge` plays the S9 lineup.
+
 ## 2026-11-12 19:59 EST — `feature_s6_vision_pacing_and_props` (v0.7.0)
 
 S6's vision moves while it's narrated, the waterskin is real, and Wick walks

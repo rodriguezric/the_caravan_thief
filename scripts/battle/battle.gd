@@ -92,11 +92,16 @@ func setup(p_def: Dictionary) -> void:
 	tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(tint)
 	var plist: Array = def.get("party", ["rook"])
-	for i in plist.size():
-		var pd: Dictionary = plist[i] if plist[i] is Dictionary else BattleDefs.member(plist[i])
+	var pdefs: Array = []
+	for e in plist:
+		pdefs.append((e as Dictionary).duplicate() if e is Dictionary else BattleDefs.member(e).duplicate())
+	var form := formation(pdefs)
+	for i in pdefs.size():
+		var pd: Dictionary = pdefs[i]
 		var u := BattleUnit.new()
-		var slots: Array = PARTY_SLOTS[mini(5, plist.size())]
-		u.setup("party", pd, pd.get("pos", slots[mini(i, slots.size() - 1)]))
+		if form[i].k != 2.0 and not pd.has("scale"):
+			pd.scale = form[i].k
+		u.setup("party", pd, pd.get("pos", form[i].pos))
 		units_node.add_child(u)
 		party.append(u)
 	var elist: Array = def.get("enemies", [])
@@ -114,6 +119,47 @@ func setup(p_def: Dictionary) -> void:
 		u.set_hostile(hostile and u.id != "rook" and not u.ai)
 	fk_charges = 3 if Game.flag("has_sword") and _rook() != null else 0
 	_build_ui()
+
+
+static func formation(pdefs: Array) -> Array:
+	## Party slots ({pos, k}) for each unit, in list order. Up to three
+	## fighters use the classic slots at full size. Bigger parties, or any with
+	## protected AI units, stand in two staggered rows: the fighters in front
+	## (nearest the enemy), the protected units in the back row filling the
+	## gaps behind them, and everyone a little smaller as the party grows, so
+	## every head stays visible.
+	var n := pdefs.size()
+	var protected := pdefs.filter(func(d: Dictionary) -> bool: return d.get("ai", false))
+	var out := []
+	if n <= 3 and protected.is_empty():
+		var slots: Array = PARTY_SLOTS[maxi(1, n)]
+		for i in n:
+			out.append({"pos": slots[i], "k": 2.0})
+		return out
+	var k: float = {1: 2.0, 2: 2.0, 3: 1.9, 4: 1.8, 5: 1.6}.get(n, 1.45)
+	var sp := 25.0 * k                      # a body width and a bit apart
+	var front := []                         # indices into pdefs
+	var back := []
+	for i in n:
+		if pdefs[i].get("ai", false):
+			back.append(i)
+		else:
+			front.append(i)
+	# at most three in front; extra fighters join the back row's front end
+	while front.size() > 3:
+		back.push_front(front.pop_back())
+	if front.is_empty():
+		front.append(back.pop_front())
+	for i in n:
+		out.append(null)
+	var x0 := 198.0
+	for j in front.size():
+		out[front[j]] = {"pos": Vector2(x0 + j * sp, 136.0 - (j % 2) * 4.0), "k": k}
+	# back row: in the gaps, half a step behind, running to the right edge
+	for j in back.size():
+		var x := x0 + sp * 0.5 + j * sp
+		out[back[j]] = {"pos": Vector2(minf(x, 308.0 - (back.size() - 1 - j) * sp * 0.5), 108.0 - (j % 2) * 3.0), "k": k}
+	return out
 
 
 func _rook() -> BattleUnit:

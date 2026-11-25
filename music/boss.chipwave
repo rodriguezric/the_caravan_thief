@@ -10,11 +10,11 @@
     "bell": {"wave": "sin", "vol": 0.12, "attack": 0.001, "decay": 1.8, "sus": 0, "release": 1.4},
     "choir": {"wave": "tri", "vol": 0.065, "attack": 0.6, "decay": 0.4, "sus": 0.9, "release": 0.9, "vib": 0.004, "vib_rate": 4.5},
     "drone": {"wave": "saw", "vol": 0.05, "attack": 0.8, "decay": 0.5, "sus": 1, "release": 1, "vib": 0.002, "vib_rate": 0.4},
-    "trumpet": {"wave": "saw", "vol": 0.12, "attack": 0.035, "decay": 0.2, "sus": 0.75, "release": 0.12, "vib": 0.006, "vib_rate": 6},
-    "twang": {"duty": 0.125, "vol": 0.11, "attack": 0.002, "decay": 0.45, "sus": 0.12, "release": 0.35, "vib": 0.004, "vib_rate": 6},
+    "trumpet": {"wave": "tri", "vol": 0.11, "attack": 0.035, "decay": 0.2, "sus": 0.75, "release": 0.12, "vib": 0.006, "vib_rate": 6},
+    "twang": {"duty": 0.125, "vol": 0.165, "attack": 0.002, "decay": 0.45, "sus": 0.12, "release": 0.35, "vib": 0.004, "vib_rate": 6},
     "twang_echo": {"duty": 0.125, "vol": 0.045, "attack": 0.002, "decay": 0.45, "sus": 0.12, "release": 0.35, "vib": 0.004, "vib_rate": 6},
     "kit": {"type": "kit", "vol": 0.6, "drums": {
-      "anvil": {"len": 0.6, "tone": 1, "wave": "sq", "pitch": [1500, 1480], "noise": 0.15, "noise_lp": 0.9, "env": "quad", "gain": 0.22},
+      "anvil": {"len": 0.14, "tone": 1, "wave": "sq", "pitch": [1500, 1480], "noise": 0.15, "noise_lp": 0.9, "env": "quad", "gain": 0.22},
       "boom": {"len": 0.5, "tone": 1, "wave": "sin", "pitch": [90, 45], "noise": 0.1, "noise_lp": 0.1, "env": "quad", "gain": 0.6},
       "crash": {"len": 1.2, "noise": 1, "noise_lp": 0.7, "env": "quad", "gain": 0.2},
       "hat": {"len": 0.03, "noise": 1, "env": "linear", "gain": 0.1},
@@ -419,7 +419,6 @@
         {"t": 3, "drum": "snare", "v": 0.6}
       ]},
       "B": {"events": [
-        {"t": 0, "drum": "anvil", "v": 0.6},
         {"t": 0, "drum": "boom", "v": 0.85},
         {"t": 0, "drum": "crash", "v": 0.7},
         {"t": 0.5, "drum": "hat", "v": 0.4},
@@ -429,7 +428,6 @@
         {"t": 3, "drum": "snare", "v": 0.6}
       ]},
       "C": {"events": [
-        {"t": 0, "drum": "anvil", "v": 0.6},
         {"t": 0, "drum": "boom", "v": 0.85},
         {"t": 0.5, "drum": "hat", "v": 0.4},
         {"t": 1, "drum": "snare", "v": 0.55},
